@@ -270,7 +270,7 @@ init-proto:
 ################################################################################
 # Target: gen-proto                                                            #
 ################################################################################
-GRPC_PROTOS:=common internals operator placement runtime sentry
+GRPC_PROTOS:=common internals operator placement runtime sentry state
 PROTO_PREFIX:=github.com/dapr/dapr
 
 # Generate archive files for each binary
@@ -308,7 +308,7 @@ check-diff:
 ################################################################################
 .PHONY: check-proto-version
 check-proto-version: ## Checking the version of proto related tools
-	@test "$(shell protoc --version)" = "libprotoc 3.14.0" \
+	@test "$(shell protoc --version)" = "libprotoc 3.19.1" \
 	|| { echo "please use protoc 3.14.0 to generate proto, see https://github.com/dapr/dapr/blob/master/dapr/README.md#proto-client-generation"; exit 1; }
 
 	@test "$(shell protoc-gen-go-grpc --version)" = "protoc-gen-go-grpc 1.1.0" \
