@@ -35,6 +35,8 @@ type PluginSpec struct {
 	Container Container `json:"container"`
 	Run       Run       `json:"run"`
 
+	Components []Component `json:"components"`
+
 	Metadata []MetadataItem `json:"metadata"`
 }
 
@@ -49,6 +51,12 @@ type Run struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 	Runtime string `json:"runtime"`
+}
+
+// Component defines the name and component type of the component. This is used to register the component in the component map
+type Component struct {
+	Name          string `json:"name"`
+	ComponentType string `json:"componentType"`
 }
 
 // MetadataItem is a name/value pair for a metadata.
@@ -97,7 +105,3 @@ type PluginList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Plugin `json:"items"`
 }
-
-// func init() {
-// 	SchemeBuilder.Register(&Plugin{}, &PluginList{})
-// }
