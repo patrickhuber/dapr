@@ -32,8 +32,8 @@ type PluginSpec struct {
 
 	Type string `json:"type"`
 
-	Container Container `json:"container"`
-	Run       Run       `json:"run"`
+	Container *Container `json:"container"`
+	Run       *Run       `json:"run"`
 
 	Components []Component `json:"components"`
 

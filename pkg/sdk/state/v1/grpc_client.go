@@ -18,7 +18,8 @@ import (
 
 // GRPCClient provides a grpc client for the state store
 type GRPCClient struct {
-	client proto.StoreClient
+	client   proto.StoreClient
+	features []state.Feature
 }
 
 func NewGRPCClient(client proto.StoreClient) state.Store {
@@ -28,7 +29,7 @@ func NewGRPCClient(client proto.StoreClient) state.Store {
 }
 
 func (c *GRPCClient) Features() []state.Feature {
-	return nil
+	return c.features
 }
 
 func (c *GRPCClient) Init(req state.Metadata) error {
@@ -38,7 +39,20 @@ func (c *GRPCClient) Init(req state.Metadata) error {
 	for k, v := range req.Properties {
 		metadata.Properties[k] = v
 	}
-	_, err := c.client.Init(context.Background(), metadata)
+
+	// we need to call the method here because features could return an error and the features interface doesn't support errors
+	featureResponse, err := c.client.Features(context.TODO(), &emptypb.Empty{})
+	if err != nil {
+		return err
+	}
+
+	c.features = []state.Feature{}
+	for _, f := range featureResponse.Feature {
+		feature := state.Feature(f)
+		c.features = append(c.features, feature)
+	}
+
+	_, err = c.client.Init(context.TODO(), metadata)
 	return err
 }
 
@@ -77,7 +91,7 @@ func (c *GRPCClient) Get(req *state.GetRequest) (*state.GetResponse, error) {
 		Data:     []byte{},
 	}
 
-	response, err := c.client.Get(context.Background(), request)
+	response, err := c.client.Get(context.TODO(), request)
 	if err != nil {
 		return emptyResponse, err
 	}
@@ -118,13 +132,13 @@ func (c *GRPCClient) Set(req *state.SetRequest) error {
 			Consistency: c.getConsistency(req.Options.Consistency),
 		},
 	}
-	_, err := c.client.Set(context.Background(), request)
+	_, err := c.client.Set(context.TODO(), request)
 	return err
 }
 
 func (c *GRPCClient) Ping() error {
 	empty := &emptypb.Empty{}
-	_, err := c.client.Ping(context.Background(), empty)
+	_, err := c.client.Ping(context.TODO(), empty)
 	return err
 }
 
@@ -140,7 +154,7 @@ func (c *GRPCClient) Delete(req *state.DeleteRequest) error {
 			Consistency: c.getConsistency(req.Options.Consistency),
 		},
 	}
-	_, err := c.client.Delete(context.Background(), request)
+	_, err := c.client.Delete(context.TODO(), request)
 	return err
 }
 

@@ -40,7 +40,7 @@ func NewStoreClient(cc grpc.ClientConnInterface) StoreClient {
 
 func (c *storeClient) Init(ctx context.Context, in *MetadataRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/Init", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/Init", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (c *storeClient) Init(ctx context.Context, in *MetadataRequest, opts ...grp
 
 func (c *storeClient) Features(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*FeaturesResponse, error) {
 	out := new(FeaturesResponse)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/Features", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/Features", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (c *storeClient) Features(ctx context.Context, in *emptypb.Empty, opts ...g
 
 func (c *storeClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/Delete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c *storeClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grp
 
 func (c *storeClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
 	out := new(GetResponse)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *storeClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.Call
 
 func (c *storeClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/Set", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/Set", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (c *storeClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.Call
 
 func (c *storeClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/Ping", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/Ping", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (c *storeClient) Ping(ctx context.Context, in *emptypb.Empty, opts ...grpc.
 
 func (c *storeClient) BulkDelete(ctx context.Context, in *BulkDeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/BulkDelete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/BulkDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (c *storeClient) BulkDelete(ctx context.Context, in *BulkDeleteRequest, opt
 
 func (c *storeClient) BulkGet(ctx context.Context, in *BulkGetRequest, opts ...grpc.CallOption) (*BulkGetResponse, error) {
 	out := new(BulkGetResponse)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/BulkGet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/BulkGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (c *storeClient) BulkGet(ctx context.Context, in *BulkGetRequest, opts ...g
 
 func (c *storeClient) BulkSet(ctx context.Context, in *BulkSetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/components.proto.state.v1.Store/BulkSet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dapr.proto.state.v1.Store/BulkSet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func _Store_Init_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/Init",
+		FullMethod: "/dapr.proto.state.v1.Store/Init",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).Init(ctx, req.(*MetadataRequest))
@@ -205,7 +205,7 @@ func _Store_Features_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/Features",
+		FullMethod: "/dapr.proto.state.v1.Store/Features",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).Features(ctx, req.(*emptypb.Empty))
@@ -223,7 +223,7 @@ func _Store_Delete_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/Delete",
+		FullMethod: "/dapr.proto.state.v1.Store/Delete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).Delete(ctx, req.(*DeleteRequest))
@@ -241,7 +241,7 @@ func _Store_Get_Handler(srv interface{}, ctx context.Context, dec func(interface
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/Get",
+		FullMethod: "/dapr.proto.state.v1.Store/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).Get(ctx, req.(*GetRequest))
@@ -259,7 +259,7 @@ func _Store_Set_Handler(srv interface{}, ctx context.Context, dec func(interface
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/Set",
+		FullMethod: "/dapr.proto.state.v1.Store/Set",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).Set(ctx, req.(*SetRequest))
@@ -277,7 +277,7 @@ func _Store_Ping_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/Ping",
+		FullMethod: "/dapr.proto.state.v1.Store/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).Ping(ctx, req.(*emptypb.Empty))
@@ -295,7 +295,7 @@ func _Store_BulkDelete_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/BulkDelete",
+		FullMethod: "/dapr.proto.state.v1.Store/BulkDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).BulkDelete(ctx, req.(*BulkDeleteRequest))
@@ -313,7 +313,7 @@ func _Store_BulkGet_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/BulkGet",
+		FullMethod: "/dapr.proto.state.v1.Store/BulkGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).BulkGet(ctx, req.(*BulkGetRequest))
@@ -331,7 +331,7 @@ func _Store_BulkSet_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/components.proto.state.v1.Store/BulkSet",
+		FullMethod: "/dapr.proto.state.v1.Store/BulkSet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoreServer).BulkSet(ctx, req.(*BulkSetRequest))
@@ -343,7 +343,7 @@ func _Store_BulkSet_Handler(srv interface{}, ctx context.Context, dec func(inter
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Store_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "components.proto.state.v1.Store",
+	ServiceName: "dapr.proto.state.v1.Store",
 	HandlerType: (*StoreServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
