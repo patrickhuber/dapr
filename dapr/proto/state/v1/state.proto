@@ -12,7 +12,7 @@ limitations under the License.
 */
 syntax = "proto3";
 
-package components.proto.state.v1;
+package dapr.proto.state.v1;
 
 import "google/protobuf/empty.proto";
 import "dapr/proto/common/v1/common.proto";
