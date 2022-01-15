@@ -36,6 +36,21 @@ spec:
           spec:
             description: PluginSpec defines the desired state of Plugin
             properties:
+              components:
+                items:
+                  description: Component defines the name and component type of the
+                    component. This is used to register the component in the component
+                    map
+                  properties:
+                    componentType:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                  - componentType
+                  - name
+                  type: object
+                type: array
               container:
                 description: ContainerSpec defines the desired container for the plugin
                 properties:
@@ -92,6 +107,7 @@ spec:
               type:
                 type: string
             required:
+            - components
             - container
             - metadata
             - run
