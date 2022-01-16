@@ -1,17 +1,11 @@
 package plugin
 
 import (
-	"github.com/hashicorp/go-plugin"
-	"google.golang.org/grpc"
+	"github.com/dapr/components-contrib/pubsub"
+	"github.com/dapr/components-contrib/state"
 )
 
 type Client interface {
-}
-
-type GRPCClient struct {
-	connection *grpc.ClientConn
-}
-
-type StandaloneClient struct {
-	client *plugin.Client
+	Store(name string) (state.Store, error)
+	PubSub(name string) (pubsub.PubSub, error)
 }

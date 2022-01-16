@@ -122,3 +122,18 @@ func GetRuntimeContext(name Runtime) RuntimeContext {
 	}
 	return runtimeContextMap[RuntimeDefault]
 }
+
+func GetRuntimeContextFromString(name string) RuntimeContext {
+	runtime := GetRuntime(name)
+	return GetRuntimeContext(runtime)
+}
+
+func GetRuntime(name string) Runtime {
+	runtime := Runtime(name)
+	switch runtime {
+	case RuntimeDotnet, RuntimeExec, RuntimeJava, RuntimeNode, RuntimePython:
+		return runtime
+	default:
+		return RuntimeDefault
+	}
+}
