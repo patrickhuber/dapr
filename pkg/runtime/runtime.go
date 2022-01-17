@@ -79,6 +79,7 @@ import (
 	http_middleware "github.com/dapr/dapr/pkg/middleware/http"
 	"github.com/dapr/dapr/pkg/modes"
 	"github.com/dapr/dapr/pkg/operator/client"
+	"github.com/dapr/dapr/pkg/plugin"
 	operatorv1pb "github.com/dapr/dapr/pkg/proto/operator/v1"
 	runtimev1pb "github.com/dapr/dapr/pkg/proto/runtime/v1"
 	runtime_pubsub "github.com/dapr/dapr/pkg/runtime/pubsub"
@@ -157,9 +158,11 @@ type DaprRuntime struct {
 	secretStores           map[string]secretstores.SecretStore
 	pubSubRegistry         pubsub_loader.Registry
 	pubSubs                map[string]pubsub.PubSub
+	plugins                map[string]plugin.Plugin
 	nameResolver           nr.Resolver
 	json                   jsoniter.API
 	httpMiddlewareRegistry http_middleware_loader.Registry
+	pluginRegistry         plugin.Registry
 	hostAddress            string
 	actorStateStoreName    string
 	actorStateStoreLock    *sync.RWMutex
@@ -229,12 +232,14 @@ func NewDaprRuntime(runtimeConfig *Config, globalConfig *config.Configuration, a
 		secretStores:           map[string]secretstores.SecretStore{},
 		stateStores:            map[string]state.Store{},
 		pubSubs:                map[string]pubsub.PubSub{},
+		plugins:                map[string]plugin.Plugin{},
 		stateStoreRegistry:     state_loader.NewRegistry(),
 		bindingsRegistry:       bindings_loader.NewRegistry(),
 		pubSubRegistry:         pubsub_loader.NewRegistry(),
 		secretStoresRegistry:   secretstores_loader.NewRegistry(),
 		nameResolutionRegistry: nr_loader.NewRegistry(),
 		httpMiddlewareRegistry: http_middleware_loader.NewRegistry(),
+		pluginRegistry:         plugin.NewRegistry(),
 
 		scopedSubscriptions: map[string][]string{},
 		scopedPublishings:   map[string][]string{},
@@ -352,6 +357,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	a.bindingsRegistry.RegisterInputBindings(opts.inputBindings...)
 	a.bindingsRegistry.RegisterOutputBindings(opts.outputBindings...)
 	a.httpMiddlewareRegistry.Register(opts.httpMiddleware...)
+	a.pluginRegistry.Register(opts.plugins...)
 
 	go a.processComponents()
 	err = a.beginComponentsUpdates()

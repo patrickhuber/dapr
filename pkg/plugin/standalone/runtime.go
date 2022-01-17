@@ -1,4 +1,4 @@
-package plugin
+package standalone
 
 import (
 	"os/exec"

@@ -7,18 +7,25 @@ import (
 	"github.com/dapr/dapr/pkg/modes"
 )
 
-func CreateLauncher(m modes.DaprMode, p *pluginapi.Plugin) (Launcher, error) {
+type LauncherFactory interface {
+	Create(*pluginapi.Plugin, modes.DaprMode) (Launcher, error)
+}
 
-	if p.Spec.Run != nil {
-		return NewStandaloneLauncher(p), nil
-	}
+type launcherFactory struct {
+	launchers []Launcher
+}
 
-	if p.Spec.Container == nil {
-		return nil, fmt.Errorf("plugin api must specify one of plugin.spec.run or plugin.spec.container")
+func NewLauncherFactory(launchers ...Launcher) LauncherFactory {
+	return &launcherFactory{
+		launchers: launchers,
 	}
+}
 
-	if m == modes.StandaloneMode {
-		return NewContainerLauncher(p), nil
+func (f *launcherFactory) Create(p *pluginapi.Plugin, m modes.DaprMode) (Launcher, error) {
+	for _, l := range f.launchers {
+		if l.CanApply(p, m) {
+			return l, nil
+		}
 	}
-	return NewKubernetesLauncher(p), nil
+	return nil, fmt.Errorf("unable to find a launcher for the given config and mode")
 }

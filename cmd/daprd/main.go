@@ -149,8 +149,12 @@ import (
 	http_middleware_loader "github.com/dapr/dapr/pkg/components/middleware/http"
 	http_middleware "github.com/dapr/dapr/pkg/middleware/http"
 
+	// Configuration
 	"github.com/dapr/components-contrib/configuration"
 	configuration_redis "github.com/dapr/components-contrib/configuration/redis"
+
+	// plugins
+	"github.com/dapr/dapr/pkg/plugin"
 )
 
 var (
@@ -501,6 +505,12 @@ func main() {
 			}),
 			http_middleware_loader.New("sentinel", func(metadata middleware.Metadata) (http_middleware.Middleware, error) {
 				return sentinel.NewMiddleware(log).GetHandler(metadata)
+			}),
+		),
+
+		runtime.WithPlugins(
+			plugin.NewLoader("kubernetes", func() (plugin.Client, error) {
+				return nil, nil
 			}),
 		),
 	)

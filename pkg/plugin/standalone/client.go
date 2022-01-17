@@ -1,4 +1,4 @@
-package plugin
+package standalone
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	"github.com/hashicorp/go-plugin"
 )
 
-type StandaloneClient struct {
+type Client struct {
 	clientProtocol plugin.ClientProtocol
 }
 
-func (c *StandaloneClient) Store(name string) (state.Store, error) {
+func (c *Client) Store(name string) (state.Store, error) {
 	value, err := c.clientProtocol.Dispense(name)
 	if err != nil {
 		return nil, err
@@ -24,6 +24,14 @@ func (c *StandaloneClient) Store(name string) (state.Store, error) {
 	return store, nil
 }
 
-func (s *StandaloneClient) PubSub(name string) (pubsub.PubSub, error) {
-	return nil, nil
+func (c *Client) PubSub(name string) (pubsub.PubSub, error) {
+	value, err := c.clientProtocol.Dispense(name)
+	if err != nil {
+		return nil, err
+	}
+	store, ok := value.(pubsub.PubSub)
+	if !ok {
+		return nil, fmt.Errorf("expected %s to be pubsub.PubSub", name)
+	}
+	return store, nil
 }
