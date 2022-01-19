@@ -5,12 +5,17 @@ import (
 
 	"github.com/dapr/components-contrib/pubsub"
 	"github.com/dapr/components-contrib/state"
+	"github.com/dapr/dapr/pkg/plugin"
 	"github.com/dapr/dapr/pkg/sdk"
-	"github.com/hashicorp/go-plugin"
+	goplugin "github.com/hashicorp/go-plugin"
 )
 
 type Plugin struct {
-	clientProtocol plugin.ClientProtocol
+	clientProtocol goplugin.ClientProtocol
+}
+
+func (c *Plugin) Init(m *plugin.Metadata) error {
+	return nil
 }
 
 func (c *Plugin) Store() (state.Store, error) {
