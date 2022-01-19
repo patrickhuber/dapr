@@ -5,14 +5,16 @@ import (
 
 	"github.com/dapr/components-contrib/pubsub"
 	"github.com/dapr/components-contrib/state"
+	"github.com/dapr/dapr/pkg/sdk"
 	"github.com/hashicorp/go-plugin"
 )
 
-type Client struct {
+type Plugin struct {
 	clientProtocol plugin.ClientProtocol
 }
 
-func (c *Client) Store(name string) (state.Store, error) {
+func (c *Plugin) Store() (state.Store, error) {
+	name := string(sdk.ProtocolGRPC)
 	value, err := c.clientProtocol.Dispense(name)
 	if err != nil {
 		return nil, err
@@ -24,7 +26,8 @@ func (c *Client) Store(name string) (state.Store, error) {
 	return store, nil
 }
 
-func (c *Client) PubSub(name string) (pubsub.PubSub, error) {
+func (c *Plugin) PubSub() (pubsub.PubSub, error) {
+	name := string(sdk.ProtocolGRPC)
 	value, err := c.clientProtocol.Dispense(name)
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ func (l *Launcher) CanApply(p *pluginapi.Plugin, mode modes.DaprMode) bool {
 	return p.Spec.Run != nil && mode == modes.StandaloneMode
 }
 
-func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Client, error) {
+func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Plugin, error) {
 
 	pluginSet := CreatePluginSet(p)
 
@@ -42,7 +42,7 @@ func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
+	return &Plugin{
 		clientProtocol: clientProtocol,
 	}, nil
 }

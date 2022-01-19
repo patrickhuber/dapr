@@ -7,5 +7,5 @@ import (
 
 type Launcher interface {
 	CanApply(p *pluginapi.Plugin, mode modes.DaprMode) bool
-	Launch(p *pluginapi.Plugin) (Client, error)
+	Launch(p *pluginapi.Plugin) (Plugin, error)
 }

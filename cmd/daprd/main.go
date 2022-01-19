@@ -137,7 +137,6 @@ import (
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 
 	// HTTP Middleware.
-
 	middleware "github.com/dapr/components-contrib/middleware"
 	"github.com/dapr/components-contrib/middleware/http/bearer"
 	"github.com/dapr/components-contrib/middleware/http/oauth2"
@@ -154,6 +153,7 @@ import (
 	configuration_redis "github.com/dapr/components-contrib/configuration/redis"
 
 	// plugins
+	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
 	"github.com/dapr/dapr/pkg/plugin"
 )
 
@@ -509,7 +509,10 @@ func main() {
 		),
 
 		runtime.WithPlugins(
-			plugin.NewLoader("kubernetes", func() (plugin.Client, error) {
+			plugin_loader.New("standalone", func() (plugin.Plugin, error) {
+				return nil, nil
+			}),
+			plugin_loader.New("kubernetes", func() (plugin.Plugin, error) {
 				return nil, nil
 			}),
 		),

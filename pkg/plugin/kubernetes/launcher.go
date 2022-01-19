@@ -17,6 +17,6 @@ func (l *Launcher) CanApply(p *pluginapi.Plugin, mode modes.DaprMode) bool {
 	return mode == modes.KubernetesMode && p.Spec.Container != nil
 }
 
-func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Client, error) {
+func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Plugin, error) {
 	return nil, nil
 }

@@ -65,6 +65,7 @@ import (
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 	http_middleware_loader "github.com/dapr/dapr/pkg/components/middleware/http"
 	nr_loader "github.com/dapr/dapr/pkg/components/nameresolution"
+	plugin_loader "github.com/dapr/dapr/pkg/components/plugins"
 	pubsub_loader "github.com/dapr/dapr/pkg/components/pubsub"
 	secretstores_loader "github.com/dapr/dapr/pkg/components/secretstores"
 	state_loader "github.com/dapr/dapr/pkg/components/state"
@@ -162,7 +163,7 @@ type DaprRuntime struct {
 	nameResolver           nr.Resolver
 	json                   jsoniter.API
 	httpMiddlewareRegistry http_middleware_loader.Registry
-	pluginRegistry         plugin.Registry
+	pluginRegistry         plugin_loader.Registry
 	hostAddress            string
 	actorStateStoreName    string
 	actorStateStoreLock    *sync.RWMutex
@@ -239,7 +240,7 @@ func NewDaprRuntime(runtimeConfig *Config, globalConfig *config.Configuration, a
 		secretStoresRegistry:   secretstores_loader.NewRegistry(),
 		nameResolutionRegistry: nr_loader.NewRegistry(),
 		httpMiddlewareRegistry: http_middleware_loader.NewRegistry(),
-		pluginRegistry:         plugin.NewRegistry(),
+		pluginRegistry:         plugin_loader.NewRegistry(),
 
 		scopedSubscriptions: map[string][]string{},
 		scopedPublishings:   map[string][]string{},

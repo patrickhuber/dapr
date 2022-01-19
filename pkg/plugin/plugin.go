@@ -5,7 +5,7 @@ import (
 	"github.com/dapr/components-contrib/state"
 )
 
-type Client interface {
-	Store(name string) (state.Store, error)
-	PubSub(name string) (pubsub.PubSub, error)
+type Plugin interface {
+	Store() (state.Store, error)
+	PubSub() (pubsub.PubSub, error)
 }

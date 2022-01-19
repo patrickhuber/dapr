@@ -11,26 +11,26 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Client struct {
+type Plugin struct {
 	connection *grpc.ClientConn
 }
 
-func CreateClient(address net.Addr) (plugin.Client, error) {
+func CreatePlugin(address net.Addr) (plugin.Plugin, error) {
 	serverAddress := address.String()
 	conn, err := grpc.Dial(serverAddress)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
+	return &Plugin{
 		connection: conn,
 	}, nil
 }
 
-func (c *Client) Store(name string) (state.Store, error) {
+func (c *Plugin) Store() (state.Store, error) {
 	client := stateproto.NewStoreClient(c.connection)
 	return statesdk.NewGRPCClient(client), nil
 }
 
-func (c *Client) PubSub(name string) (pubsub.PubSub, error) {
+func (c *Plugin) PubSub() (pubsub.PubSub, error) {
 	return nil, nil
 }

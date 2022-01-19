@@ -8,7 +8,7 @@ import (
 	"github.com/dapr/dapr/pkg/components/pubsub"
 	"github.com/dapr/dapr/pkg/components/secretstores"
 	"github.com/dapr/dapr/pkg/components/state"
-	"github.com/dapr/dapr/pkg/plugin"
+	"github.com/dapr/dapr/pkg/components/plugins"
 )
 
 type (
