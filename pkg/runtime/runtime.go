@@ -208,7 +208,7 @@ type ComponentRegistry struct {
 }
 
 type componentPreprocessRes struct {
-	unreadyDependency string
+	unreadyDependencies []string
 }
 
 type pubsubSubscribedMessage struct {
@@ -1741,7 +1741,7 @@ func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 	if err != nil {
 		return err
 	}
-	
+
 	for _, comp := range comps {
 		log.Debugf("found component. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	}
@@ -1817,8 +1817,8 @@ func (a *DaprRuntime) flushOutstandingComponents() {
 func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Component) error {
 	log.Debugf("loading component. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	res := a.preprocessOneComponent(&comp)
-	if res.unreadyDependency != "" {
-		a.pendingComponentDependents[res.unreadyDependency] = append(a.pendingComponentDependents[res.unreadyDependency], comp)
+	for _, unreadyDependency := range res.unreadyDependencies {
+		a.pendingComponentDependents[unreadyDependency] = append(a.pendingComponentDependents[unreadyDependency], comp)
 		return nil
 	}
 
@@ -1884,14 +1884,21 @@ func (a *DaprRuntime) doProcessOneComponent(category ComponentCategory, comp com
 }
 
 func (a *DaprRuntime) preprocessOneComponent(comp *components_v1alpha1.Component) componentPreprocessRes {
+	unreadyDependencies := []string{}
+
 	var unreadySecretsStore string
 	*comp, unreadySecretsStore = a.processComponentSecrets(*comp)
 	if unreadySecretsStore != "" {
-		return componentPreprocessRes{
-			unreadyDependency: componentDependency(secretStoreComponent, unreadySecretsStore),
-		}
+		componentDependency(secretStoreComponent, unreadySecretsStore)
+		unreadyDependencies = append(unreadyDependencies, unreadySecretsStore)
 	}
-	return componentPreprocessRes{}
+
+	if comp.Plugin != "" {
+		unreadyDependencies = append(unreadyDependencies, comp.Plugin)
+	}
+	return componentPreprocessRes{
+		unreadyDependencies: unreadyDependencies,
+	}
 }
 
 func (a *DaprRuntime) stopActor() {

@@ -34,6 +34,8 @@ type Component struct {
 	// +optional
 	Auth `json:"auth,omitempty"`
 	// +optional
+	Plugin string `json:"plugin,omitempty"`
+	// +optional
 	Scopes []string `json:"scopes,omitempty"`
 }
 
