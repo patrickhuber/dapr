@@ -6,27 +6,25 @@ import (
 	"github.com/dapr/dapr/pkg/sdk"
 	"github.com/dapr/dapr/pkg/sdk/state/v1"
 	goplugin "github.com/hashicorp/go-plugin"
-
-	pluginapi "github.com/dapr/dapr/pkg/apis/plugins/v1alpha1"
 )
 
 type Launcher struct {
 }
 
-func NewStandaloneLauncher(p *pluginapi.Plugin) plugin.Launcher {
+func NewStandaloneLauncher() plugin.Launcher {
 
 	return &Launcher{}
 }
 
-func (l *Launcher) CanApply(p *pluginapi.Plugin, mode modes.DaprMode) bool {
-	return p.Spec.Run != nil && mode == modes.StandaloneMode
+func (l *Launcher) CanApply(c *plugin.Config, mode modes.DaprMode) bool {
+	return c.Run != nil && mode == modes.StandaloneMode
 }
 
-func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Plugin, error) {
+func (l *Launcher) Launch(c *plugin.Config) (plugin.Plugin, error) {
 
-	pluginSet := CreatePluginSet(p)
+	pluginSet := CreatePluginSet(c)
 
-	runtimeContext := GetRuntimeContextFromString(p.Spec.Run.Runtime)
+	runtimeContext := GetRuntimeContextFromString(c.Run.Runtime)
 	cmd := runtimeContext.Command("")
 
 	client := goplugin.NewClient(&goplugin.ClientConfig{
@@ -47,9 +45,9 @@ func (l *Launcher) Launch(p *pluginapi.Plugin) (plugin.Plugin, error) {
 	}, nil
 }
 
-func CreatePluginSet(p *pluginapi.Plugin) goplugin.PluginSet {
+func CreatePluginSet(c *plugin.Config) goplugin.PluginSet {
 	pluginSet := goplugin.PluginSet{}
-	for _, c := range p.Spec.Components {
+	for _, c := range c.Components {
 		switch c.ComponentType {
 		case "state":
 			pluginSet[c.Name] = state.GRPCStatePlugin{}

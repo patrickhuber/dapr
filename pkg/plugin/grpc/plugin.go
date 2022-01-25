@@ -3,6 +3,7 @@ package plugin
 import (
 	"net"
 
+	"github.com/dapr/components-contrib/configuration"
 	"github.com/dapr/components-contrib/pubsub"
 	"github.com/dapr/components-contrib/state"
 	"github.com/dapr/dapr/pkg/plugin"
@@ -26,7 +27,7 @@ func CreatePlugin(address net.Addr) (plugin.Plugin, error) {
 	}, nil
 }
 
-func (c *Plugin) Init(m *plugin.Metadata) error {
+func (c *Plugin) Init(m configuration.Metadata) error {
 	return nil
 }
 

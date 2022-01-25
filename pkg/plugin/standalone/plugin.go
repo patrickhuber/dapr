@@ -3,9 +3,9 @@ package standalone
 import (
 	"fmt"
 
+	"github.com/dapr/components-contrib/configuration"
 	"github.com/dapr/components-contrib/pubsub"
 	"github.com/dapr/components-contrib/state"
-	"github.com/dapr/dapr/pkg/plugin"
 	"github.com/dapr/dapr/pkg/sdk"
 	goplugin "github.com/hashicorp/go-plugin"
 )
@@ -14,7 +14,7 @@ type Plugin struct {
 	clientProtocol goplugin.ClientProtocol
 }
 
-func (c *Plugin) Init(m *plugin.Metadata) error {
+func (c *Plugin) Init(m configuration.Metadata) error {
 	return nil
 }
 

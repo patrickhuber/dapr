@@ -3,12 +3,11 @@ package plugin
 import (
 	"fmt"
 
-	pluginapi "github.com/dapr/dapr/pkg/apis/plugins/v1alpha1"
 	"github.com/dapr/dapr/pkg/modes"
 )
 
 type LauncherFactory interface {
-	Create(*pluginapi.Plugin, modes.DaprMode) (Launcher, error)
+	Create(*Config, modes.DaprMode) (Launcher, error)
 }
 
 type launcherFactory struct {
@@ -21,9 +20,9 @@ func NewLauncherFactory(launchers ...Launcher) LauncherFactory {
 	}
 }
 
-func (f *launcherFactory) Create(p *pluginapi.Plugin, m modes.DaprMode) (Launcher, error) {
+func (f *launcherFactory) Create(c *Config, m modes.DaprMode) (Launcher, error) {
 	for _, l := range f.launchers {
-		if l.CanApply(p, m) {
+		if l.CanApply(c, m) {
 			return l, nil
 		}
 	}

@@ -57,11 +57,11 @@ func TestCreatePlugin(t *testing.T) {
 		mockPluginV2 := new(daprt.MockPlugin)
 
 		// act
-		testRegistry.Register(New(pluginName, func() plugin.Plugin {
-			return mockPlugin
+		testRegistry.Register(New(pluginName, func() (plugin.Plugin, error) {
+			return mockPlugin, nil
 		}))
-		testRegistry.Register(New(pluginNameV2, func() plugin.Plugin {
-			return mockPluginV2
+		testRegistry.Register(New(pluginNameV2, func() (plugin.Plugin, error) {
+			return mockPluginV2, nil
 		}))
 
 		// assert v0 and v1
