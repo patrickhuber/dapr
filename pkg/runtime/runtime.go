@@ -1964,7 +1964,15 @@ func (a *DaprRuntime) shutdownComponents() error {
 			log.Warn(err)
 		}
 	}
-
+	for name, plugin := range a.plugins {
+		if closer, ok := plugin.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				err = fmt.Errorf("error closing plugin %s: %w", name, err)
+				merr = multierror.Append(merr, err)
+				log.Warn(err)
+			}
+		}
+	}
 	return merr
 }
 
