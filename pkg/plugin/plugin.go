@@ -8,11 +8,6 @@ import (
 	"github.com/dapr/components-contrib/state"
 )
 
-// Metadata represents a set of message-bus specific properties.
-type Metadata struct {
-	Properties map[string]string `json:"properties"`
-}
-
 // ErrComponentNotImplemented defines a not found error
 var ErrComponentNotImplemented = fmt.Errorf("the plugin component service is not implemented")
 

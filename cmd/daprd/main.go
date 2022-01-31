@@ -155,6 +155,8 @@ import (
 	// plugins
 	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
 	"github.com/dapr/dapr/pkg/plugin"
+	"github.com/dapr/dapr/pkg/plugin/grpc"
+	"github.com/dapr/dapr/pkg/plugin/standalone"
 )
 
 var (
@@ -510,10 +512,10 @@ func main() {
 
 		runtime.WithPlugins(
 			plugin_loader.New("standalone", func() (plugin.Plugin, error) {
-				return nil, nil
+				return standalone.NewPlugin(), nil
 			}),
 			plugin_loader.New("kubernetes", func() (plugin.Plugin, error) {
-				return nil, nil
+				return grpc.NewPlugin(), nil
 			}),
 		),
 	)

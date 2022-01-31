@@ -16,11 +16,9 @@ package plugin
 import (
 	"strings"
 
-	"github.com/dapr/dapr/pkg/plugin"
-
-	"github.com/pkg/errors"
-
 	"github.com/dapr/dapr/pkg/components"
+	"github.com/dapr/dapr/pkg/plugin"
+	"github.com/pkg/errors"
 )
 
 type (

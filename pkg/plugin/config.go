@@ -1,6 +1,6 @@
 package plugin
 
-import api "github.com/dapr/dapr/pkg/apis/components/v1alpha1"
+import "github.com/dapr/components-contrib/configuration"
 
 // Config defines the configuration for a plugin
 type Config struct {
@@ -29,6 +29,6 @@ type Component struct {
 }
 
 // MapComponentAPIToConfig maps the component API schema to the Configuration schema
-func MapComponentAPIToConfig(c api.Component) Config {
-	return Config{}
+func MapComponentAPIToConfig(m configuration.Metadata) *Config {
+	return &Config{}
 }

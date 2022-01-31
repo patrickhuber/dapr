@@ -1,4 +1,4 @@
-package plugin
+package grpc
 
 import (
 	"net"
@@ -16,19 +16,28 @@ type Plugin struct {
 	connection *grpc.ClientConn
 }
 
-func CreatePlugin(address net.Addr) (plugin.Plugin, error) {
-	serverAddress := address.String()
-	conn, err := grpc.Dial(serverAddress)
-	if err != nil {
-		return nil, err
-	}
-	return &Plugin{
-		connection: conn,
-	}, nil
+func NewPlugin() plugin.Plugin {
+	return &Plugin{}
 }
 
 func (c *Plugin) Init(m configuration.Metadata) error {
+
+	cfg := plugin.MapComponentAPIToConfig(m)
+	address, err := c.startContainer(cfg.Container)
+	if err != nil {
+		return err
+	}
+	conn, err := grpc.Dial(address.String())
+	if err != nil {
+		return err
+	}
+	c.connection = conn
 	return nil
+}
+
+func (c *Plugin) startContainer(container *plugin.Container) (net.Addr, error) {
+	var address net.Addr
+	return address, nil
 }
 
 func (c *Plugin) Store() (state.Store, error) {
