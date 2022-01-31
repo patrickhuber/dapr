@@ -1,0 +1,129 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.7.0
+  creationTimestamp: null
+  name: plugins.dapr.io
+spec:
+  group: dapr.io
+  names:
+    kind: Plugin
+    listKind: PluginList
+    plural: plugins
+    singular: plugin
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Plugin is the Schema for the plugins API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PluginSpec defines the desired state of Plugin
+            properties:
+              components:
+                items:
+                  description: Component defines the name and component type of the
+                    component. This is used to register the component in the component
+                    map
+                  properties:
+                    componentType:
+                      type: string
+                    name:
+                      type: string
+                  required:
+                  - componentType
+                  - name
+                  type: object
+                type: array
+              container:
+                description: ContainerSpec defines the desired container for the plugin
+                properties:
+                  repository:
+                    type: string
+                  tag:
+                    type: string
+                required:
+                - repository
+                - tag
+                type: object
+              metadata:
+                items:
+                  description: MetadataItem is a name/value pair for a metadata.
+                  properties:
+                    name:
+                      type: string
+                    secretKeyRef:
+                      description: SecretKeyRef is a reference to a secret holding
+                        the value for the metadata item. Name is the secret name,
+                        and key is the field in the secret.
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    value:
+                      description: DynamicValue is a dynamic value struct for the
+                        component.metadata pair value.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                  - name
+                  type: object
+                type: array
+              run:
+                description: RunSpec defines the desired run command for the plugin
+                properties:
+                  name:
+                    type: string
+                  runtime:
+                    type: string
+                  version:
+                    type: string
+                required:
+                - name
+                - runtime
+                - version
+                type: object
+              type:
+                type: string
+            required:
+            - components
+            - container
+            - metadata
+            - run
+            - type
+            type: object
+          status:
+            description: PluginStatus defines the observed state of Plugin
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

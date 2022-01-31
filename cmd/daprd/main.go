@@ -137,7 +137,6 @@ import (
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 
 	// HTTP Middleware.
-
 	middleware "github.com/dapr/components-contrib/middleware"
 	"github.com/dapr/components-contrib/middleware/http/bearer"
 	"github.com/dapr/components-contrib/middleware/http/oauth2"
@@ -149,8 +148,15 @@ import (
 	http_middleware_loader "github.com/dapr/dapr/pkg/components/middleware/http"
 	http_middleware "github.com/dapr/dapr/pkg/middleware/http"
 
+	// Configuration
 	"github.com/dapr/components-contrib/configuration"
 	configuration_redis "github.com/dapr/components-contrib/configuration/redis"
+
+	// plugins
+	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
+	"github.com/dapr/dapr/pkg/plugin"
+	"github.com/dapr/dapr/pkg/plugin/grpc"
+	"github.com/dapr/dapr/pkg/plugin/standalone"
 )
 
 var (
@@ -501,6 +507,15 @@ func main() {
 			}),
 			http_middleware_loader.New("sentinel", func(metadata middleware.Metadata) (http_middleware.Middleware, error) {
 				return sentinel.NewMiddleware(log).GetHandler(metadata)
+			}),
+		),
+
+		runtime.WithPlugins(
+			plugin_loader.New("standalone", func() (plugin.Plugin, error) {
+				return standalone.NewPlugin(), nil
+			}),
+			plugin_loader.New("kubernetes", func() (plugin.Plugin, error) {
+				return grpc.NewPlugin(), nil
 			}),
 		),
 	)

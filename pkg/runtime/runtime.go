@@ -65,6 +65,7 @@ import (
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 	http_middleware_loader "github.com/dapr/dapr/pkg/components/middleware/http"
 	nr_loader "github.com/dapr/dapr/pkg/components/nameresolution"
+	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
 	pubsub_loader "github.com/dapr/dapr/pkg/components/pubsub"
 	secretstores_loader "github.com/dapr/dapr/pkg/components/secretstores"
 	state_loader "github.com/dapr/dapr/pkg/components/state"
@@ -79,6 +80,7 @@ import (
 	http_middleware "github.com/dapr/dapr/pkg/middleware/http"
 	"github.com/dapr/dapr/pkg/modes"
 	"github.com/dapr/dapr/pkg/operator/client"
+	"github.com/dapr/dapr/pkg/plugin"
 	operatorv1pb "github.com/dapr/dapr/pkg/proto/operator/v1"
 	runtimev1pb "github.com/dapr/dapr/pkg/proto/runtime/v1"
 	runtime_pubsub "github.com/dapr/dapr/pkg/runtime/pubsub"
@@ -105,6 +107,7 @@ const (
 	stateComponent                  ComponentCategory = "state"
 	middlewareComponent             ComponentCategory = "middleware"
 	configurationComponent          ComponentCategory = "configuration"
+	pluginComponent                 ComponentCategory = "plugin"
 	defaultComponentInitTimeout                       = time.Second * 5
 	defaultGracefulShutdownDuration                   = time.Second * 5
 	kubernetesSecretStore                             = "kubernetes"
@@ -117,6 +120,7 @@ var componentCategoriesNeedProcess = []ComponentCategory{
 	stateComponent,
 	middlewareComponent,
 	configurationComponent,
+	pluginComponent,
 }
 
 var log = logger.NewLogger("dapr.runtime")
@@ -157,9 +161,11 @@ type DaprRuntime struct {
 	secretStores           map[string]secretstores.SecretStore
 	pubSubRegistry         pubsub_loader.Registry
 	pubSubs                map[string]pubsub.PubSub
+	plugins                map[string]plugin.Plugin
 	nameResolver           nr.Resolver
 	json                   jsoniter.API
 	httpMiddlewareRegistry http_middleware_loader.Registry
+	pluginRegistry         plugin_loader.Registry
 	hostAddress            string
 	actorStateStoreName    string
 	actorStateStoreLock    *sync.RWMutex
@@ -202,7 +208,7 @@ type ComponentRegistry struct {
 }
 
 type componentPreprocessRes struct {
-	unreadyDependency string
+	unreadyDependencies []string
 }
 
 type pubsubSubscribedMessage struct {
@@ -229,12 +235,14 @@ func NewDaprRuntime(runtimeConfig *Config, globalConfig *config.Configuration, a
 		secretStores:           map[string]secretstores.SecretStore{},
 		stateStores:            map[string]state.Store{},
 		pubSubs:                map[string]pubsub.PubSub{},
+		plugins:                map[string]plugin.Plugin{},
 		stateStoreRegistry:     state_loader.NewRegistry(),
 		bindingsRegistry:       bindings_loader.NewRegistry(),
 		pubSubRegistry:         pubsub_loader.NewRegistry(),
 		secretStoresRegistry:   secretstores_loader.NewRegistry(),
 		nameResolutionRegistry: nr_loader.NewRegistry(),
 		httpMiddlewareRegistry: http_middleware_loader.NewRegistry(),
+		pluginRegistry:         plugin_loader.NewRegistry(),
 
 		scopedSubscriptions: map[string][]string{},
 		scopedPublishings:   map[string][]string{},
@@ -352,6 +360,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	a.bindingsRegistry.RegisterInputBindings(opts.inputBindings...)
 	a.bindingsRegistry.RegisterOutputBindings(opts.outputBindings...)
 	a.httpMiddlewareRegistry.Register(opts.httpMiddleware...)
+	a.pluginRegistry.Register(opts.plugins...)
 
 	go a.processComponents()
 	err = a.beginComponentsUpdates()
@@ -1111,6 +1120,34 @@ func (a *DaprRuntime) initOutputBinding(c components_v1alpha1.Component) error {
 	return nil
 }
 
+// initPlugin initializes the plugin component from the api spec
+// TODO: refactor this into a ComponentInitializer interface
+//
+// type ComponentInitializer interface {
+//	  Initialize(components_v1alpha1.Component) error
+// }
+func (a *DaprRuntime) initPlugin(s components_v1alpha1.Component) error {
+	plugin, err := a.pluginRegistry.Create(s.Spec.Type, s.Spec.Version)
+	if err != nil {
+		log.Warnf("error creating plugin %s (%s/%s): %s", &s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
+		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
+		return err
+	}
+	if plugin == nil {
+		return nil
+	}
+
+	props := a.convertMetadataItemsToProperties(s.Spec.Metadata)
+	err = plugin.Init(configuration.Metadata{
+		Properties: props,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (a *DaprRuntime) initConfiguration(s components_v1alpha1.Component) error {
 	store, err := a.configurationStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
 	if err != nil {
@@ -1679,7 +1716,7 @@ func (a *DaprRuntime) isComponentAuthorized(component components_v1alpha1.Compon
 	return false
 }
 
-func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
+func (a *DaprRuntime) getComponentLoader() (components.ComponentLoader, error) {
 	var loader components.ComponentLoader
 
 	switch a.runtimeConfig.Mode {
@@ -1688,7 +1725,15 @@ func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 	case modes.StandaloneMode:
 		loader = components.NewStandaloneComponents(a.runtimeConfig.Standalone)
 	default:
-		return errors.Errorf("components loader for mode %s not found", a.runtimeConfig.Mode)
+		return nil, errors.Errorf("components loader for mode %s not found", a.runtimeConfig.Mode)
+	}
+	return loader, nil
+}
+
+func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
+	loader, err := a.getComponentLoader()
+	if err != nil {
+		return err
 	}
 
 	log.Info("loading components")
@@ -1696,6 +1741,7 @@ func (a *DaprRuntime) loadComponents(opts *runtimeOpts) error {
 	if err != nil {
 		return err
 	}
+
 	for _, comp := range comps {
 		log.Debugf("found component. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	}
@@ -1771,8 +1817,8 @@ func (a *DaprRuntime) flushOutstandingComponents() {
 func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Component) error {
 	log.Debugf("loading component. name: %s, type: %s/%s", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version)
 	res := a.preprocessOneComponent(&comp)
-	if res.unreadyDependency != "" {
-		a.pendingComponentDependents[res.unreadyDependency] = append(a.pendingComponentDependents[res.unreadyDependency], comp)
+	for _, unreadyDependency := range res.unreadyDependencies {
+		a.pendingComponentDependents[unreadyDependency] = append(a.pendingComponentDependents[unreadyDependency], comp)
 		return nil
 	}
 
@@ -1831,19 +1877,28 @@ func (a *DaprRuntime) doProcessOneComponent(category ComponentCategory, comp com
 		return a.initState(comp)
 	case configurationComponent:
 		return a.initConfiguration(comp)
+	case pluginComponent:
+		return a.initPlugin(comp)
 	}
 	return nil
 }
 
 func (a *DaprRuntime) preprocessOneComponent(comp *components_v1alpha1.Component) componentPreprocessRes {
+	unreadyDependencies := []string{}
+
 	var unreadySecretsStore string
 	*comp, unreadySecretsStore = a.processComponentSecrets(*comp)
 	if unreadySecretsStore != "" {
-		return componentPreprocessRes{
-			unreadyDependency: componentDependency(secretStoreComponent, unreadySecretsStore),
-		}
+		componentDependency(secretStoreComponent, unreadySecretsStore)
+		unreadyDependencies = append(unreadyDependencies, unreadySecretsStore)
 	}
-	return componentPreprocessRes{}
+
+	if comp.Plugin != "" {
+		unreadyDependencies = append(unreadyDependencies, comp.Plugin)
+	}
+	return componentPreprocessRes{
+		unreadyDependencies: unreadyDependencies,
+	}
 }
 
 func (a *DaprRuntime) stopActor() {
@@ -1909,7 +1964,15 @@ func (a *DaprRuntime) shutdownComponents() error {
 			log.Warn(err)
 		}
 	}
-
+	for name, plugin := range a.plugins {
+		if closer, ok := plugin.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				err = fmt.Errorf("error closing plugin %s: %w", name, err)
+				merr = multierror.Append(merr, err)
+				log.Warn(err)
+			}
+		}
+	}
 	return merr
 }
 
