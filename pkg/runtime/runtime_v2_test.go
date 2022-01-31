@@ -41,34 +41,35 @@ func TestComponentDefinitionQueueCanDequeue(t *testing.T) {
 	require.NotNil(t, c)
 }
 
-func TestGraphCanInsert(t *testing.T) {
+func TestDependencyGraphCanInsert(t *testing.T) {
 	g := runtime.NewGraph()
 	require.NotNil(t, g)
+
 	g.Upsert("test", "test")
-	require.Equal(t, 1, len(g.Nodes))
+	n, exists := g.Lookup("test")
+	require.True(t, exists)
+	require.NotNil(t, n)
+	require.Equal(t, n, "test")
 }
 
-func TestGraphCanUpdate(t *testing.T) {
+func TestDependencyGraphCanUpdate(t *testing.T) {
 	g := runtime.NewGraph()
+
 	g.Upsert("test", "test")
-	n := g.Nodes["test"]
+	n, exists := g.Lookup("test")
+	require.True(t, exists)
 	require.NotNil(t, n)
-	require.Equal(t, n.Data, "test")
+	require.Equal(t, n, "test")
+
 	g.Upsert("test", "new")
-	n = g.Nodes["test"]
+	n, exists = g.Lookup("test")
+	require.True(t, exists)
 	require.NotNil(t, n)
-	require.Equal(t, n.Data, "new")
+	require.Equal(t, n, "new")
+
 }
 
-func TestGraphCanSetDependency(t *testing.T) {
-	g := runtime.NewGraph()
-	g.Upsert("parent", "parent")
-	g.Upsert("child", "child", "parent")
-	child := g.Nodes["child"]
-	require.Equal(t, 1, len(child.Edges))
-}
-
-func TestGraphCanLookupData(t *testing.T) {
+func TestDependencyGraphCanLookupData(t *testing.T) {
 	g := runtime.NewGraph()
 	g.Upsert("test", "data")
 	data, exists := g.Lookup("test")
@@ -76,20 +77,20 @@ func TestGraphCanLookupData(t *testing.T) {
 	require.Equal(t, "data", data)
 }
 
-func TestGraphLookupReturnsFalseWhenMissing(t *testing.T) {
+func TestDependencyGraphLookupReturnsFalseWhenMissing(t *testing.T) {
 	g := runtime.NewGraph()
 	g.Upsert("test", "data")
 	_, exists := g.Lookup("other")
 	require.False(t, exists)
 }
 
-func TestGraphNextReturnsFalseWhenEmpty(t *testing.T) {
+func TestDependencyGraphNextReturnsFalseWhenEmpty(t *testing.T) {
 	g := runtime.NewGraph()
 	_, exists := g.Next()
 	require.False(t, exists)
 }
 
-func TestGraphNextReturnsFalseWhenCircularDependency(t *testing.T) {
+func TestDependencyGraphNextReturnsFalseWhenCircularDependency(t *testing.T) {
 	g := runtime.NewGraph()
 	g.Upsert("first", "first", "middle")
 	g.Upsert("middle", "middle", "last")
@@ -98,7 +99,7 @@ func TestGraphNextReturnsFalseWhenCircularDependency(t *testing.T) {
 	require.False(t, exists)
 }
 
-func TestGraphNextReturnsTrueWhenHierarchy(t *testing.T) {
+func TestDependencyGraphNextReturnsTrueWhenHierarchy(t *testing.T) {
 	g := runtime.NewGraph()
 	g.Upsert("parent", "parent")
 	g.Upsert("child", "child", "parent")

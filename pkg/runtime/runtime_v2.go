@@ -100,7 +100,7 @@ type ComponentAuthorizationPolicy func(comp *components_v1alpha1.Component) bool
 type ComponentDefinitionManager struct {
 	loader                    components.ComponentLoader
 	authorizationPolicy       ComponentAuthorizationPolicy
-	componentLifecycleManager *ComponentLifecycleManager
+	componentLifecycleManager *componentLifecycleManager
 	logger                    logger.Logger
 }
 
@@ -147,27 +147,27 @@ const (
 	ComponentLifecycleStatusPending ComponentLifecycleStatus = "pending"
 )
 
-// ComponentLifecycleManager manages the component lifecycle
-type ComponentLifecycleManager struct {
+// componentLifecycleManager manages the component lifecycle
+type componentLifecycleManager struct {
 	logger    logger.Logger
 	factory   *ComponentFactory
 	ch        chan struct{}
 	registry  *ComponentRegistryV2
-	workQueue *ComponentDefinitionQueue
+	workQueue *componentDefinitionQueue
 }
 
-func (m *ComponentLifecycleManager) NewComponentLifecycleManager(
+func (m *componentLifecycleManager) NewComponentLifecycleManager(
 	logger logger.Logger,
-	registry *ComponentRegistryV2) *ComponentLifecycleManager {
+	registry *ComponentRegistryV2) *componentLifecycleManager {
 
-	return &ComponentLifecycleManager{
+	return &componentLifecycleManager{
 		logger:   logger,
 		registry: registry,
 		ch:       make(chan struct{}),
 	}
 }
 
-func (m *ComponentLifecycleManager) Process(comp *components_v1alpha1.Component) {
+func (m *componentLifecycleManager) Process(comp *components_v1alpha1.Component) {
 	// enqueue the component for processing
 	// the work queue takes care of de-duplication and will return false if the item was not queued
 	if !m.workQueue.Enqueue(comp) {
@@ -180,7 +180,7 @@ func (m *ComponentLifecycleManager) Process(comp *components_v1alpha1.Component)
 	}()
 }
 
-func (m *ComponentLifecycleManager) RunAsync() (doneChan chan struct{}, errChan chan error) {
+func (m *componentLifecycleManager) RunAsync() (doneChan chan struct{}, errChan chan error) {
 	doneChan = make(chan struct{})
 	errChan = make(chan error)
 	go func() {
@@ -215,7 +215,7 @@ func (m *ComponentLifecycleManager) RunAsync() (doneChan chan struct{}, errChan 
 	return doneChan, errChan
 }
 
-func (m *ComponentLifecycleManager) Shutdown() {
+func (m *componentLifecycleManager) Shutdown() {
 	m.logger.Info("Shutting down all components")
 
 }
@@ -224,22 +224,26 @@ type SecretStoreResolver interface {
 	Get(name string) secretstores.SecretStore
 }
 
-// ComponentInterpolator takes a component definition and interpolates secret references
-type ComponentInterpolator struct {
+type ComponentInterpolator interface {
+	Interpolate(comp *components_v1alpha1.Component) (*components_v1alpha1.Component, error)
+}
+
+// componentInterpolator takes a component definition and interpolates secret references
+type componentInterpolator struct {
 	resolver SecretStoreResolver
 	mode     modes.DaprMode
 	logger   logger.Logger
 }
 
-func NewComponentInterpolator(resolver SecretStoreResolver, mode modes.DaprMode, logger logger.Logger) *ComponentInterpolator {
-	return &ComponentInterpolator{
+func NewComponentInterpolator(resolver SecretStoreResolver, mode modes.DaprMode, logger logger.Logger) ComponentInterpolator {
+	return &componentInterpolator{
 		resolver: resolver,
 		mode:     mode,
 		logger:   logger,
 	}
 }
 
-func (i *ComponentInterpolator) Interpolate(comp *components_v1alpha1.Component) (*components_v1alpha1.Component, error) {
+func (i *componentInterpolator) Interpolate(comp *components_v1alpha1.Component) (*components_v1alpha1.Component, error) {
 	for index, m := range comp.Spec.Metadata {
 		if m.SecretKeyRef.Name == "" {
 			continue
@@ -294,14 +298,14 @@ func (i *ComponentInterpolator) Interpolate(comp *components_v1alpha1.Component)
 	return comp, nil
 }
 
-func (i *ComponentInterpolator) getSecretStore(name string) secretstores.SecretStore {
+func (i *componentInterpolator) getSecretStore(name string) secretstores.SecretStore {
 	if name == "" {
 		return nil
 	}
 	return i.resolver.Get(name)
 }
 
-func (i *ComponentInterpolator) getSecretStoreName(name string) string {
+func (i *componentInterpolator) getSecretStoreName(name string) string {
 	if name == "" && i.mode == modes.KubernetesMode {
 		// there should be some constants somewhere to do these lookups
 		return "kubernetes"
@@ -309,11 +313,11 @@ func (i *ComponentInterpolator) getSecretStoreName(name string) string {
 	return name
 }
 
-func (i *ComponentInterpolator) shouldDecodeSecrets(name string) bool {
+func (i *componentInterpolator) shouldDecodeSecrets(name string) bool {
 	return i.mode == modes.KubernetesMode && name == kubernetesSecretStore
 }
 
-func (i *ComponentInterpolator) decodeSecret(val []byte) (*components_v1alpha1.DynamicValue, error) {
+func (i *componentInterpolator) decodeSecret(val []byte) (*components_v1alpha1.DynamicValue, error) {
 	var jsonVal string
 	err := json.Unmarshal(val, &jsonVal)
 	if err != nil {
@@ -360,20 +364,25 @@ func (s *secretStoreCacheFacade) GetSecret(request secretstores.GetSecretRequest
 	return s.secretStore.GetSecret(request)
 }
 
-// ComponentDefinitionQueue contains the queue of pending components to be processed by the component definition manager
-type ComponentDefinitionQueue struct {
-	lock  sync.RWMutex
-	graph *Graph
+type ComponentDefinitionQueue interface {
+	Enqueue(component *components_v1alpha1.Component) bool
+	Dequeue() (*components_v1alpha1.Component, bool)
 }
 
-func NewComponentDefinitionQueue() *ComponentDefinitionQueue {
-	return &ComponentDefinitionQueue{
+// componentDefinitionQueue contains the queue of pending components to be processed by the component definition manager
+type componentDefinitionQueue struct {
+	lock  sync.RWMutex
+	graph DependencyGraph
+}
+
+func NewComponentDefinitionQueue() ComponentDefinitionQueue {
+	return &componentDefinitionQueue{
 		graph: NewGraph(),
 	}
 }
 
 // Enqueue adds teh component spec to the list work list. If the component is unchanged it returns without modification.
-func (q *ComponentDefinitionQueue) Enqueue(component *components_v1alpha1.Component) bool {
+func (q *componentDefinitionQueue) Enqueue(component *components_v1alpha1.Component) bool {
 	if component == nil || component.Spec.Type == "" || component.Name == "" {
 		return false
 	}
@@ -401,7 +410,7 @@ func (q *ComponentDefinitionQueue) Enqueue(component *components_v1alpha1.Compon
 	return true
 }
 
-func (q *ComponentDefinitionQueue) lookup(ID string) (*components_v1alpha1.Component, bool) {
+func (q *componentDefinitionQueue) lookup(ID string) (*components_v1alpha1.Component, bool) {
 	q.lock.RLock()
 	defer q.lock.RUnlock()
 
@@ -413,7 +422,7 @@ func (q *ComponentDefinitionQueue) lookup(ID string) (*components_v1alpha1.Compo
 }
 
 // Dequeue removes the next item from the list that can be processed
-func (q *ComponentDefinitionQueue) Dequeue() (*components_v1alpha1.Component, bool) {
+func (q *componentDefinitionQueue) Dequeue() (*components_v1alpha1.Component, bool) {
 
 	// locks access to the graph
 	q.lock.Lock()
@@ -433,28 +442,33 @@ func (q *ComponentDefinitionQueue) Dequeue() (*components_v1alpha1.Component, bo
 	return component, true
 }
 
-type Node struct {
+type dependencyNode struct {
 	Processed bool
 	ID        string
 	Data      interface{}
-	Edges     map[string]*Node
+	Edges     map[string]*dependencyNode
 }
 
-type Graph struct {
-	Nodes map[string]*Node
+type DependencyGraph interface {
+	Upsert(ID string, data interface{}, dependencies ...string)
+	Next() (string, bool)
+	Lookup(ID string) (data interface{}, exists bool)
+}
+type dependencyGraph struct {
+	Nodes map[string]*dependencyNode
 }
 
-func NewGraph() *Graph {
-	return &Graph{
-		Nodes: map[string]*Node{},
+func NewGraph() DependencyGraph {
+	return &dependencyGraph{
+		Nodes: map[string]*dependencyNode{},
 	}
 }
 
 // newNode creates a node with the given ID and registers it in the node list
-func (g *Graph) newNode(ID string) *Node {
-	n := &Node{
+func (g *dependencyGraph) newNode(ID string) *dependencyNode {
+	n := &dependencyNode{
 		ID:        ID,
-		Edges:     map[string]*Node{},
+		Edges:     map[string]*dependencyNode{},
 		Processed: false,
 	}
 	g.Nodes[ID] = n
@@ -462,7 +476,7 @@ func (g *Graph) newNode(ID string) *Node {
 }
 
 // Upsert inserts or updates the node with ID and adds dependencies. Upsert also marks the node as dirty
-func (g *Graph) Upsert(ID string, data interface{}, dependencies ...string) {
+func (g *dependencyGraph) Upsert(ID string, data interface{}, dependencies ...string) {
 	n, exists := g.Nodes[ID]
 	if !exists {
 		n = g.newNode(ID)
@@ -482,7 +496,7 @@ func (g *Graph) Upsert(ID string, data interface{}, dependencies ...string) {
 
 // Next returns the next unprocessed node without dependencies
 // If the next node is found, Next() also returns true, false otherwise
-func (g *Graph) Next() (string, bool) {
+func (g *dependencyGraph) Next() (string, bool) {
 	found := false
 	ID := ""
 	for _, n := range g.Nodes {
@@ -514,7 +528,7 @@ func (g *Graph) Next() (string, bool) {
 }
 
 // Lookup gets the data for the node. If the node exists it also returns true
-func (g *Graph) Lookup(ID string) (data interface{}, exists bool) {
+func (g *dependencyGraph) Lookup(ID string) (data interface{}, exists bool) {
 	n, exists := g.Nodes[ID]
 	if !exists {
 		return nil, false
