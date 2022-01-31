@@ -512,10 +512,10 @@ func main() {
 
 		runtime.WithPlugins(
 			plugin_loader.New("standalone", func() (plugin.Plugin, error) {
-				return standalone.NewPlugin(), nil
+				return standalone.NewPlugin(logContrib), nil
 			}),
 			plugin_loader.New("kubernetes", func() (plugin.Plugin, error) {
-				return grpc.NewPlugin(), nil
+				return grpc.NewPlugin(logContrib), nil
 			}),
 		),
 	)

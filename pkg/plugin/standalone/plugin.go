@@ -8,6 +8,7 @@ import (
 	"github.com/dapr/components-contrib/state"
 	"github.com/dapr/dapr/pkg/plugin"
 	"github.com/dapr/dapr/pkg/sdk"
+	"github.com/dapr/kit/logger"
 	goplugin "github.com/hashicorp/go-plugin"
 
 	state_sdk "github.com/dapr/dapr/pkg/sdk/state/v1"
@@ -15,10 +16,13 @@ import (
 
 type Plugin struct {
 	clientProtocol goplugin.ClientProtocol
+	logger         logger.Logger
 }
 
-func NewPlugin() plugin.Plugin {
-	return &Plugin{}
+func NewPlugin(logger logger.Logger) plugin.Plugin {
+	return &Plugin{
+		logger: logger,
+	}
 }
 
 func (p *Plugin) Init(m configuration.Metadata) error {

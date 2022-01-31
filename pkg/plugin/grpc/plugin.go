@@ -9,15 +9,19 @@ import (
 	"github.com/dapr/dapr/pkg/plugin"
 	stateproto "github.com/dapr/dapr/pkg/proto/state/v1"
 	statesdk "github.com/dapr/dapr/pkg/sdk/state/v1"
+	"github.com/dapr/kit/logger"
 	"google.golang.org/grpc"
 )
 
 type Plugin struct {
 	connection *grpc.ClientConn
+	logger     logger.Logger
 }
 
-func NewPlugin() plugin.Plugin {
-	return &Plugin{}
+func NewPlugin(logger logger.Logger) plugin.Plugin {
+	return &Plugin{
+		logger: logger,
+	}
 }
 
 func (c *Plugin) Init(m configuration.Metadata) error {
