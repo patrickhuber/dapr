@@ -16,6 +16,7 @@ package components
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +47,12 @@ func NewStandaloneComponents(configuration config.StandaloneConfig) *StandaloneC
 
 // LoadComponents loads dapr components from a given directory.
 func (s *StandaloneComponents) LoadComponents() ([]components_v1alpha1.Component, error) {
+	if s.config.ComponentsPath == "" {
+		return nil, fmt.Errorf("no component path specified")
+	}
+	if _, err := os.Stat(s.config.ComponentsPath); err != nil {
+		return nil, fmt.Errorf("component path '%s' is invalid", s.config.ComponentsPath)
+	}
 	files, err := os.ReadDir(s.config.ComponentsPath)
 	if err != nil {
 		return nil, err
