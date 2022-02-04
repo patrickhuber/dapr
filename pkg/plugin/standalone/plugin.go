@@ -34,7 +34,7 @@ func (p *Plugin) Init(m configuration.Metadata) error {
 	path := CreateComponentPath(cfg.Run)
 	cmd := runtimeContext.Command(path)
 
-	p.logger.Debugf("loading runtime '%s' plugin ", cfg.Run.Runtime, cmd)
+	p.logger.Debugf("loading runtime '%s' plugin %s", cfg.Run.Runtime, cmd)
 	client := goplugin.NewClient(&goplugin.ClientConfig{
 		HandshakeConfig: sdk.Handshake,
 		Plugins:         pluginSet,
@@ -76,6 +76,10 @@ func (c *Plugin) PubSub() (pubsub.PubSub, error) {
 		return nil, fmt.Errorf("expected %s to be pubsub.PubSub", name)
 	}
 	return store, nil
+}
+
+func (c *Plugin) Close() error {
+	return c.clientProtocol.Close()
 }
 
 func CreatePluginSet(c *plugin.Config) goplugin.PluginSet {

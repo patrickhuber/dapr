@@ -1142,8 +1142,14 @@ func (a *DaprRuntime) initPlugin(s components_v1alpha1.Component) error {
 		Properties: props,
 	})
 	if err != nil {
+		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
+		log.Warnf("error initializing plugin %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 		return err
 	}
+
+	// save the plugin in the plugin list and notify the component was initialized
+	a.plugins[s.ObjectMeta.Name] = plugin
+	diag.DefaultMonitoring.ComponentInitialized(s.Spec.Type)
 
 	return nil
 }
@@ -1175,65 +1181,78 @@ func (a *DaprRuntime) initConfiguration(s components_v1alpha1.Component) error {
 
 // Refer for state store api decision  https://github.com/dapr/dapr/blob/master/docs/decision_records/api/API-008-multi-state-store-api-design.md
 func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
-	store, err := a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
+	var store state.Store
+	var err error
+
+	log.Debugf("component plugin value : %s", s.Plugin)
+	log.Debugf("plugin list count %d", len(a.plugins))
+	// if the component references a plugin dependency, it should be loaded by now
+	if plugin, exists := a.plugins[s.Plugin]; exists {
+		store, err = plugin.Store()
+	} else {
+		store, err = a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
+	}
+
 	if err != nil {
 		log.Warnf("error creating state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
 		return err
 	}
-	if store != nil {
-		secretStoreName := a.authSecretStoreOrDefault(s)
 
-		if config.IsFeatureEnabled(a.globalConfig.Spec.Features, config.StateEncryption) {
-			secretStore := a.getSecretStore(secretStoreName)
-			encKeys, encErr := encryption.ComponentEncryptionKey(s, secretStore)
-			if encErr != nil {
-				log.Errorf("error initializing state store encryption %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, encErr)
-				diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
-				return encErr
-			}
-
-			if encKeys.Primary.Key != "" {
-				ok := encryption.AddEncryptedStateStore(s.ObjectMeta.Name, encKeys)
-				if ok {
-					log.Infof("automatic encryption enabled for state store %s", s.ObjectMeta.Name)
-				}
-			}
-		}
-
-		props := a.convertMetadataItemsToProperties(s.Spec.Metadata)
-		err = store.Init(state.Metadata{
-			Properties: props,
-		})
-		if err != nil {
-			diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
-			log.Warnf("error initializing state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
-			return err
-		}
-
-		a.stateStores[s.ObjectMeta.Name] = store
-		err = state_loader.SaveStateConfiguration(s.ObjectMeta.Name, props)
-		if err != nil {
-			diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
-			log.Warnf("error save state keyprefix: %s", err.Error())
-			return err
-		}
-
-		// set specified actor store if "actorStateStore" is true in the spec.
-		actorStoreSpecified := props[actorStateStore]
-		if actorStoreSpecified == "true" {
-			a.actorStateStoreLock.Lock()
-			if a.actorStateStoreName == "" {
-				log.Infof("detected actor state store: %s", s.ObjectMeta.Name)
-				a.actorStateStoreName = s.ObjectMeta.Name
-			} else if a.actorStateStoreName != s.ObjectMeta.Name {
-				log.Fatalf("detected duplicate actor state store: %s", s.ObjectMeta.Name)
-			}
-			a.actorStateStoreLock.Unlock()
-		}
-		diag.DefaultMonitoring.ComponentInitialized(s.Spec.Type)
+	if store == nil {
+		return nil
 	}
 
+	secretStoreName := a.authSecretStoreOrDefault(s)
+
+	if config.IsFeatureEnabled(a.globalConfig.Spec.Features, config.StateEncryption) {
+		secretStore := a.getSecretStore(secretStoreName)
+		encKeys, encErr := encryption.ComponentEncryptionKey(s, secretStore)
+		if encErr != nil {
+			log.Errorf("error initializing state store encryption %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, encErr)
+			diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
+			return encErr
+		}
+
+		if encKeys.Primary.Key != "" {
+			ok := encryption.AddEncryptedStateStore(s.ObjectMeta.Name, encKeys)
+			if ok {
+				log.Infof("automatic encryption enabled for state store %s", s.ObjectMeta.Name)
+			}
+		}
+	}
+
+	props := a.convertMetadataItemsToProperties(s.Spec.Metadata)
+	err = store.Init(state.Metadata{
+		Properties: props,
+	})
+	if err != nil {
+		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
+		log.Warnf("error initializing state store %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
+		return err
+	}
+
+	a.stateStores[s.ObjectMeta.Name] = store
+	err = state_loader.SaveStateConfiguration(s.ObjectMeta.Name, props)
+	if err != nil {
+		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
+		log.Warnf("error save state keyprefix: %s", err.Error())
+		return err
+	}
+
+	// set specified actor store if "actorStateStore" is true in the spec.
+	actorStoreSpecified := props[actorStateStore]
+	if actorStoreSpecified == "true" {
+		a.actorStateStoreLock.Lock()
+		if a.actorStateStoreName == "" {
+			log.Infof("detected actor state store: %s", s.ObjectMeta.Name)
+			a.actorStateStoreName = s.ObjectMeta.Name
+		} else if a.actorStateStoreName != s.ObjectMeta.Name {
+			log.Fatalf("detected duplicate actor state store: %s", s.ObjectMeta.Name)
+		}
+		a.actorStateStoreLock.Unlock()
+	}
+	diag.DefaultMonitoring.ComponentInitialized(s.Spec.Type)
 	return nil
 }
 
