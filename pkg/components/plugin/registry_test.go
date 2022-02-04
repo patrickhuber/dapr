@@ -45,7 +45,7 @@ func TestCreateFullName(t *testing.T) {
 func TestCreatePlugin(t *testing.T) {
 	testRegistry := NewRegistry()
 
-	t.Run("plugin messagebus is registered", func(t *testing.T) {
+	t.Run("plugin is registered", func(t *testing.T) {
 		const (
 			pluginName    = "mockPlugin"
 			pluginNameV2  = "mockPlugin/v2"
@@ -84,12 +84,12 @@ func TestCreatePlugin(t *testing.T) {
 		assert.Same(t, mockPluginV2, pV2)
 	})
 
-	t.Run("plugin messagebus is not registered", func(t *testing.T) {
+	t.Run("plugin is not registered", func(t *testing.T) {
 		const PluginName = "fakePlugin"
 
 		// act
 		p, actualError := testRegistry.Create(createFullName(PluginName), "v1")
-		expectedError := errors.Errorf("couldn't find message bus %s/v1", createFullName(PluginName))
+		expectedError := errors.Errorf("couldn't find plugin %s/v1", createFullName(PluginName))
 		// assert
 		assert.Nil(t, p)
 		assert.Equal(t, expectedError.Error(), actualError.Error())

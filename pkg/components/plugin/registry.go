@@ -68,7 +68,7 @@ func (p *pluginRegistry) Create(name, version string) (plugin.Plugin, error) {
 	if method, ok := p.getplugin(name, version); ok {
 		return method()
 	}
-	return nil, errors.Errorf("couldn't find message bus %s/%s", name, version)
+	return nil, errors.Errorf("couldn't find plugin %s/%s", name, version)
 }
 
 func (p *pluginRegistry) getplugin(name, version string) (FactoryMethod, bool) {

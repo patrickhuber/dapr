@@ -60,6 +60,7 @@ import (
 	channelt "github.com/dapr/dapr/pkg/channel/testing"
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 	nr_loader "github.com/dapr/dapr/pkg/components/nameresolution"
+	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
 	pubsub_loader "github.com/dapr/dapr/pkg/components/pubsub"
 	secretstores_loader "github.com/dapr/dapr/pkg/components/secretstores"
 	state_loader "github.com/dapr/dapr/pkg/components/state"
@@ -70,6 +71,7 @@ import (
 	"github.com/dapr/dapr/pkg/expr"
 	invokev1 "github.com/dapr/dapr/pkg/messaging/v1"
 	"github.com/dapr/dapr/pkg/modes"
+	"github.com/dapr/dapr/pkg/plugin"
 	operatorv1pb "github.com/dapr/dapr/pkg/proto/operator/v1"
 	runtimev1pb "github.com/dapr/dapr/pkg/proto/runtime/v1"
 	runtime_pubsub "github.com/dapr/dapr/pkg/runtime/pubsub"
@@ -3111,6 +3113,23 @@ func TestInitBindings(t *testing.T) {
 		output.ObjectMeta.Name = "testinput"
 		output.Spec.Type = "bindings.testoutput"
 		err = r.initBinding(output)
+		assert.NoError(t, err)
+	})
+}
+
+func TestInitPlugins(t *testing.T) {
+	t.Run("single plugin with state store", func(t *testing.T) {
+		r := NewDaprRuntime(&Config{}, &config.Configuration{}, &config.AccessControlList{})
+		defer stopRuntime(t, r)
+		r.pluginRegistry.Register(
+			plugin_loader.New("testPlugin", func() (plugin.Plugin, error) {
+				return &daprt.MockPlugin{}, nil
+			}),
+		)
+		c := components_v1alpha1.Component{}
+		c.ObjectMeta.Name = "testPlugin"
+		c.Spec.Type = "plugin.testPlugin"
+		err := r.initPlugin(c)
 		assert.NoError(t, err)
 	})
 }

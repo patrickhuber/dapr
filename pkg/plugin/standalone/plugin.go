@@ -2,6 +2,7 @@ package standalone
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/dapr/components-contrib/configuration"
 	"github.com/dapr/components-contrib/pubsub"
@@ -30,8 +31,10 @@ func (p *Plugin) Init(m configuration.Metadata) error {
 	pluginSet := CreatePluginSet(cfg)
 
 	runtimeContext := GetRuntimeContextFromString(cfg.Run.Runtime)
-	cmd := runtimeContext.Command("")
+	path := CreateComponentPath(cfg.Run)
+	cmd := runtimeContext.Command(path)
 
+	p.logger.Debugf("loading runtime '%s' plugin ", cfg.Run.Runtime, cmd)
 	client := goplugin.NewClient(&goplugin.ClientConfig{
 		HandshakeConfig: sdk.Handshake,
 		Plugins:         pluginSet,
@@ -84,4 +87,9 @@ func CreatePluginSet(c *plugin.Config) goplugin.PluginSet {
 		}
 	}
 	return pluginSet
+}
+
+func CreateComponentPath(c *plugin.Run) string {
+	fileName := fmt.Sprintf("dapr-%s-%s", c.Name, c.Version)
+	return filepath.Join(c.BaseDirectory, c.Name, c.Version, fileName)
 }

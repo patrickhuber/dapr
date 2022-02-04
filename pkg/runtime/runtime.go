@@ -1129,7 +1129,7 @@ func (a *DaprRuntime) initOutputBinding(c components_v1alpha1.Component) error {
 func (a *DaprRuntime) initPlugin(s components_v1alpha1.Component) error {
 	plugin, err := a.pluginRegistry.Create(s.Spec.Type, s.Spec.Version)
 	if err != nil {
-		log.Warnf("error creating plugin %s (%s/%s): %s", &s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
+		log.Warnf("error creating plugin %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
 		return err
 	}
