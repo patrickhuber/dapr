@@ -34,8 +34,6 @@ type Component struct {
 	// +optional
 	Auth `json:"auth,omitempty"`
 	// +optional
-	Plugin string `json:"plugin,omitempty"`
-	// +optional
 	Scopes []string `json:"scopes,omitempty"`
 }
 
@@ -43,6 +41,8 @@ type Component struct {
 type ComponentSpec struct {
 	Type    string `json:"type"`
 	Version string `json:"version"`
+	// +optional
+	Plugin string `json:"plugin,omitempty" yaml:"plugin,omitempty"`
 	// +optional
 	IgnoreErrors bool           `json:"ignoreErrors"`
 	Metadata     []MetadataItem `json:"metadata"`

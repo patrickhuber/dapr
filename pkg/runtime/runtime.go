@@ -1184,10 +1184,14 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	var store state.Store
 	var err error
 
-	log.Debugf("component plugin value : %s", s.Plugin)
-	log.Debugf("plugin list count %d", len(a.plugins))
+	log.Debugf("component %s %s plugin value : %s", s.Spec.Type, s.Spec.Version, s.Spec.Plugin)
+	plugins := []string{}
+	for k := range a.plugins {
+		plugins = append(plugins, k)
+	}
+	log.Debugf("plugins %s", strings.Join(plugins, ","))
 	// if the component references a plugin dependency, it should be loaded by now
-	if plugin, exists := a.plugins[s.Plugin]; exists {
+	if plugin, exists := a.plugins[s.Spec.Plugin]; exists {
 		store, err = plugin.Store()
 	} else {
 		store, err = a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
@@ -1200,6 +1204,7 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	}
 
 	if store == nil {
+		log.Warnf("state store %s (%s/%s) is nil", &s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version)
 		return nil
 	}
 
@@ -1912,8 +1917,8 @@ func (a *DaprRuntime) preprocessOneComponent(comp *components_v1alpha1.Component
 		unreadyDependencies = append(unreadyDependencies, unreadySecretsStore)
 	}
 
-	if comp.Plugin != "" {
-		unreadyDependencies = append(unreadyDependencies, comp.Plugin)
+	if comp.Spec.Plugin != "" {
+		unreadyDependencies = append(unreadyDependencies, comp.Spec.Plugin)
 	}
 	return componentPreprocessRes{
 		unreadyDependencies: unreadyDependencies,
