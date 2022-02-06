@@ -28,19 +28,23 @@ func NewPlugin(logger logger.Logger) plugin.Plugin {
 
 func (p *Plugin) Init(m configuration.Metadata) error {
 	cfg := plugin.MapComponentAPIToConfig(m)
-	pluginSet := CreatePluginSet(cfg)
 
 	runtimeContext := GetRuntimeContextFromString(cfg.Run.Runtime)
 	path := CreateComponentPath(cfg.Run)
 	cmd := runtimeContext.Command(path)
 
+	// additional maps would be joined to this
+	pluginMap := goplugin.PluginSet{}
+	for k, v := range state_sdk.PluginMap {
+		pluginMap[k] = v
+	}
+
 	p.logger.Debugf("loading runtime '%s' plugin %s", cfg.Run.Runtime, cmd)
 	client := goplugin.NewClient(&goplugin.ClientConfig{
 		HandshakeConfig: sdk.Handshake,
-		Plugins:         pluginSet,
+		Plugins:         pluginMap,
 		Cmd:             cmd,
 		AllowedProtocols: []goplugin.Protocol{
-			goplugin.ProtocolNetRPC,
 			goplugin.ProtocolGRPC,
 		},
 	})
@@ -53,7 +57,7 @@ func (p *Plugin) Init(m configuration.Metadata) error {
 }
 
 func (c *Plugin) Store() (state.Store, error) {
-	name := string(sdk.ProtocolGRPC)
+	name := string(state_sdk.ProtocolGRPC)
 	value, err := c.clientProtocol.Dispense(name)
 	if err != nil {
 		return nil, err
@@ -80,17 +84,6 @@ func (c *Plugin) PubSub() (pubsub.PubSub, error) {
 
 func (c *Plugin) Close() error {
 	return c.clientProtocol.Close()
-}
-
-func CreatePluginSet(c *plugin.Config) goplugin.PluginSet {
-	pluginSet := goplugin.PluginSet{}
-	for _, c := range c.Components {
-		switch c.ComponentType {
-		case "state":
-			pluginSet[c.Name] = state_sdk.GRPCStatePlugin{}
-		}
-	}
-	return pluginSet
 }
 
 func CreateComponentPath(c *plugin.Run) string {

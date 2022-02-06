@@ -1184,14 +1184,9 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	var store state.Store
 	var err error
 
-	log.Debugf("component %s %s plugin value : %s", s.Spec.Type, s.Spec.Version, s.Spec.Plugin)
-	plugins := []string{}
-	for k := range a.plugins {
-		plugins = append(plugins, k)
-	}
-	log.Debugf("plugins %s", strings.Join(plugins, ","))
 	// if the component references a plugin dependency, it should be loaded by now
 	if plugin, exists := a.plugins[s.Spec.Plugin]; exists {
+		log.Debugf("component %s %s plugin value : %s", s.Spec.Type, s.Spec.Version, s.Spec.Plugin)
 		store, err = plugin.Store()
 	} else {
 		store, err = a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
@@ -1843,6 +1838,9 @@ func (a *DaprRuntime) processComponentAndDependents(comp components_v1alpha1.Com
 	res := a.preprocessOneComponent(&comp)
 	for _, unreadyDependency := range res.unreadyDependencies {
 		a.pendingComponentDependents[unreadyDependency] = append(a.pendingComponentDependents[unreadyDependency], comp)
+	}
+	if len(res.unreadyDependencies) > 0 {
+		log.Debugf("delaying load of component name: %s, type: %s/%s with (%d) unready dependencies.", comp.ObjectMeta.Name, comp.Spec.Type, comp.Spec.Version, len(res.unreadyDependencies))
 		return nil
 	}
 
@@ -1913,13 +1911,20 @@ func (a *DaprRuntime) preprocessOneComponent(comp *components_v1alpha1.Component
 	var unreadySecretsStore string
 	*comp, unreadySecretsStore = a.processComponentSecrets(*comp)
 	if unreadySecretsStore != "" {
-		componentDependency(secretStoreComponent, unreadySecretsStore)
-		unreadyDependencies = append(unreadyDependencies, unreadySecretsStore)
+		dependency := componentDependency(secretStoreComponent, unreadySecretsStore)
+		unreadyDependencies = append(unreadyDependencies, dependency)
 	}
 
+	// does this component have a plugin dependency?
 	if comp.Spec.Plugin != "" {
-		unreadyDependencies = append(unreadyDependencies, comp.Spec.Plugin)
+
+		// if the dependency isn't loaded, wait until it is
+		if _, ok := a.plugins[comp.Spec.Plugin]; !ok {
+			dependency := componentDependency(pluginComponent, comp.Spec.Plugin)
+			unreadyDependencies = append(unreadyDependencies, dependency)
+		}
 	}
+
 	return componentPreprocessRes{
 		unreadyDependencies: unreadyDependencies,
 	}

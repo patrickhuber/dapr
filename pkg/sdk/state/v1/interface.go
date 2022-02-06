@@ -16,10 +16,20 @@ const (
 	ProtocolGRPC = "state_grpc"
 )
 
-// PluginMap is the map of plugins we can dispense.
-var PluginMap = map[string]plugin.Plugin{
-	ProtocolRPC:  &RPCStatePlugin{},
+var PluginMap = plugin.PluginSet{
 	ProtocolGRPC: &GRPCStatePlugin{},
+	ProtocolRPC:  &RPCStatePlugin{},
+}
+
+func CreatePluginMap(store state.Store) map[string]plugin.Plugin {
+	return map[string]plugin.Plugin{
+		ProtocolGRPC: &GRPCStatePlugin{
+			Impl: store,
+		},
+		ProtocolRPC: &RPCStatePlugin{
+			Impl: store,
+		},
+	}
 }
 
 type GRPCStatePlugin struct {
