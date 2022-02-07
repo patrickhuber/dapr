@@ -96,9 +96,67 @@ func (s *GRPCServer) BulkDelete(ctx context.Context, req *statev1pb.BulkDeleteRe
 }
 
 func (s *GRPCServer) BulkGet(ctx context.Context, req *statev1pb.BulkGetRequest) (*statev1pb.BulkGetResponse, error) {
-	return nil, nil
+	requests := []state.GetRequest{}
+	for _, protoRequest := range req.Items {
+		stateRequest := state.GetRequest{
+			Key:      protoRequest.GetKey(),
+			Metadata: protoRequest.GetMetadata(),
+			Options: state.GetStateOption{
+				Consistency: protoRequest.Consistency.String(),
+			},
+		}
+		requests = append(requests, stateRequest)
+	}
+
+	ok, responses, err := s.Impl.BulkGet(requests)
+	if err != nil {
+		return nil, err
+	}
+	items := []*statev1pb.BulkStateItem{}
+	for _, resp := range responses {
+		var etag *common.Etag
+		if resp.ETag != nil {
+			etag = &common.Etag{
+				Value: *resp.ETag,
+			}
+		}
+		item := &statev1pb.BulkStateItem{
+			Key:      resp.Key,
+			Data:     resp.Data,
+			Etag:     etag,
+			Error:    resp.Error,
+			Metadata: resp.Metadata,
+		}
+		items = append(items, item)
+	}
+
+	return &statev1pb.BulkGetResponse{
+		Items: items,
+		Got:   ok,
+	}, nil
 }
 
+func (s *GRPCServer) mapSetRequest(stateSetRequest *statev1pb.SetRequest) *state.SetRequest {
+	etag := ""
+	if stateSetRequest.Etag != nil {
+		etag = stateSetRequest.Etag.Value
+	}
+	return &state.SetRequest{
+		Key:   stateSetRequest.Key,
+		ETag:  &etag,
+		Value: stateSetRequest.Value,
+		Options: state.SetStateOption{
+			Concurrency: stateSetRequest.Options.GetConcurrency().String(),
+			Consistency: stateSetRequest.Options.GetConsistency().String(),
+		},
+	}
+}
 func (s *GRPCServer) BulkSet(ctx context.Context, req *statev1pb.BulkSetRequest) (*emptypb.Empty, error) {
-	return nil, nil
+	requests := []state.SetRequest{}
+	for _, protoSetRequest := range req.Items {
+		stateSetRequest := s.mapSetRequest(protoSetRequest)
+		requests = append(requests, *stateSetRequest)
+	}
+	err := s.Impl.BulkSet(requests)
+	return &emptypb.Empty{}, err
 }

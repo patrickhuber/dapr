@@ -29,3 +29,7 @@ func (s *RPCServer) Set(req *state.SetRequest, resp *interface{}) error {
 func (s *RPCServer) Ping(args *interface{}, resp *interface{}) error {
 	return s.Impl.Ping()
 }
+
+func (s *RPCServer) BulkSet(req *[]state.SetRequest, resp *interface{}) error {
+	return s.Impl.BulkSet(*req)
+}

@@ -77,6 +77,9 @@ func (s *Store) Set(req *state.SetRequest) error {
 	case []byte:
 		bytes = t
 	default:
+		if t == nil {
+			return fmt.Errorf("set: request body is nil")
+		}
 		var err error
 		if bytes, err = utils.Marshal(t, json.Marshal); err != nil {
 			return err
@@ -118,6 +121,12 @@ func (s *Store) BulkGet(req []state.GetRequest) (bool, []state.BulkGetResponse, 
 }
 
 func (s *Store) BulkSet(req []state.SetRequest) error {
+	for _, r := range req {
+		err := s.Set(&r)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

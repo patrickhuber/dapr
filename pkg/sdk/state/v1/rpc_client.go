@@ -13,6 +13,7 @@ const (
 	InitMethod     = "Plugin.Init"
 	PingMethod     = "Plugin.Ping"
 	FeaturesMethod = "Plugin.Features"
+	BulkSetMethod  = "Plugin.BulkSet"
 )
 
 type RPCClient struct {
@@ -70,5 +71,8 @@ func (s *RPCClient) BulkGet(req []state.GetRequest) (bool, []state.BulkGetRespon
 }
 
 func (s *RPCClient) BulkSet(req []state.SetRequest) error {
-	return nil
+	var resp interface{}
+	return s.client.Call(BulkSetMethod, map[string]interface{}{
+		"req": req,
+	}, &resp)
 }

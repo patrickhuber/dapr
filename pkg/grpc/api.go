@@ -535,6 +535,9 @@ func (a *api) SaveState(ctx context.Context, in *runtimev1pb.SaveStateRequest) (
 		if err1 != nil {
 			return &emptypb.Empty{}, err1
 		}
+		if s.Value == nil {
+			apiServerLogger.Debugf("empty request body for key %s", key)
+		}
 		req := state.SetRequest{
 			Key:      key,
 			Metadata: s.Metadata,
@@ -558,7 +561,6 @@ func (a *api) SaveState(ctx context.Context, in *runtimev1pb.SaveStateRequest) (
 
 			req.Value = val
 		}
-
 		reqs = append(reqs, req)
 	}
 

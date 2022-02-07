@@ -74,16 +74,6 @@ func (c *GRPCClient) getConcurrency(value string) common.StateOptions_StateConcu
 
 func (c *GRPCClient) Get(req *state.GetRequest) (*state.GetResponse, error) {
 
-	consistency, ok := common.StateOptions_StateConsistency_value[req.Key]
-	if !ok {
-		consistency = int32(common.StateOptions_CONSISTENCY_UNSPECIFIED)
-	}
-	request := &proto.GetRequest{
-		Key:         req.Key,
-		Metadata:    req.Metadata,
-		Consistency: common.StateOptions_StateConsistency(consistency),
-	}
-
 	etag := ""
 	emptyResponse := &state.GetResponse{
 		ETag:     &etag,
@@ -91,7 +81,7 @@ func (c *GRPCClient) Get(req *state.GetRequest) (*state.GetResponse, error) {
 		Data:     []byte{},
 	}
 
-	response, err := c.client.Get(context.TODO(), request)
+	response, err := c.client.Get(context.TODO(), c.mapGetRequest(req))
 	if err != nil {
 		return emptyResponse, err
 	}
@@ -99,40 +89,36 @@ func (c *GRPCClient) Get(req *state.GetRequest) (*state.GetResponse, error) {
 		return emptyResponse, fmt.Errorf("response is nil")
 	}
 
-	etag = response.GetEtag().Value
+	return c.mapGetResponse(response), nil
+}
+
+func (c *GRPCClient) mapGetRequest(req *state.GetRequest) *proto.GetRequest {
+	consistency, ok := common.StateOptions_StateConsistency_value[req.Key]
+	if !ok {
+		consistency = int32(common.StateOptions_CONSISTENCY_UNSPECIFIED)
+	}
+	return &proto.GetRequest{
+		Key:         req.Key,
+		Metadata:    req.Metadata,
+		Consistency: common.StateOptions_StateConsistency(consistency),
+	}
+}
+
+func (c *GRPCClient) mapGetResponse(resp *proto.GetResponse) *state.GetResponse {
+	etag := resp.GetEtag().Value
 	return &state.GetResponse{
-		Data:     response.GetData(),
+		Data:     resp.GetData(),
 		ETag:     &etag,
-		Metadata: response.GetMetadata(),
-	}, nil
+		Metadata: resp.GetMetadata(),
+	}
 }
 
 func (c *GRPCClient) Set(req *state.SetRequest) error {
-	var bytes []byte
-	switch t := req.Value.(type) {
-	case string:
-		bytes = []byte(t)
-	case []byte:
-		bytes = t
-	default:
-		var err error
-		if bytes, err = utils.Marshal(t, json.Marshal); err != nil {
-			return err
-		}
+	protoRequest, err := c.mapSetRequest(req)
+	if err != nil {
+		return err
 	}
-	request := &proto.SetRequest{
-		Key:   req.GetKey(),
-		Value: bytes,
-		Etag: &common.Etag{
-			Value: *req.ETag,
-		},
-		Metadata: req.GetMetadata(),
-		Options: &common.StateOptions{
-			Concurrency: c.getConcurrency(req.Options.Concurrency),
-			Consistency: c.getConsistency(req.Options.Consistency),
-		},
-	}
-	_, err := c.client.Set(context.TODO(), request)
+	_, err = c.client.Set(context.TODO(), protoRequest)
 	return err
 }
 
@@ -163,9 +149,78 @@ func (c *GRPCClient) BulkDelete(req []state.DeleteRequest) error {
 }
 
 func (c *GRPCClient) BulkGet(req []state.GetRequest) (bool, []state.BulkGetResponse, error) {
-	return false, nil, nil
+	protoRequests := []*proto.GetRequest{}
+	for _, request := range req {
+		protoRequest := c.mapGetRequest(&request)
+		protoRequests = append(protoRequests, protoRequest)
+	}
+	bulkGetRequest := &proto.BulkGetRequest{
+		Items: protoRequests,
+	}
+	bulkGetResponse, err := c.client.BulkGet(context.TODO(), bulkGetRequest)
+	if err != nil {
+		return false, nil, err
+	}
+	items := []state.BulkGetResponse{}
+	for _, resp := range bulkGetResponse.Items {
+		bulkGet := state.BulkGetResponse{
+			Key:      resp.GetKey(),
+			Data:     resp.GetData(),
+			ETag:     &resp.GetEtag().Value,
+			Metadata: resp.GetMetadata(),
+			Error:    resp.Error,
+		}
+		items = append(items, bulkGet)
+	}
+	return bulkGetResponse.Got, items, nil
 }
 
 func (c *GRPCClient) BulkSet(req []state.SetRequest) error {
-	return nil
+	requests := []*proto.SetRequest{}
+	for _, r := range req {
+		protoRequest, err := c.mapSetRequest(&r)
+		if err != nil {
+			return err
+		}
+		requests = append(requests, protoRequest)
+	}
+	var err error
+	_, err = c.client.BulkSet(context.TODO(), &proto.BulkSetRequest{
+		Items: requests,
+	})
+	return err
+}
+
+func (c *GRPCClient) mapSetRequest(req *state.SetRequest) (*proto.SetRequest, error) {
+	var bytes []byte
+	switch t := req.Value.(type) {
+	case string:
+		bytes = []byte(t)
+	case []byte:
+		bytes = t
+	default:
+		if t == nil {
+			return nil, fmt.Errorf("set nil value")
+		}
+		var err error
+		if bytes, err = utils.Marshal(t, json.Marshal); err != nil {
+			return nil, err
+		}
+	}
+	var etag *common.Etag
+	if req.ETag != nil {
+		etag = &common.Etag{
+			Value: *req.ETag,
+		}
+	}
+	return &proto.SetRequest{
+		Key:      req.GetKey(),
+		Value:    bytes,
+		Etag:     etag,
+		Metadata: req.GetMetadata(),
+		Options: &common.StateOptions{
+			Concurrency: c.getConcurrency(req.Options.Concurrency),
+			Consistency: c.getConsistency(req.Options.Consistency),
+		},
+	}, nil
 }

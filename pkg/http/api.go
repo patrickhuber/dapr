@@ -596,6 +596,8 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 		log.Debug(err)
 		return
 	}
+
+	log.Debugf("store (%s) get (%s)", storeName, k)
 	req := state.GetRequest{
 		Key: k,
 		Options: state.GetStateOption{
@@ -612,6 +614,7 @@ func (a *api) onGetState(reqCtx *fasthttp.RequestCtx) {
 		return
 	}
 	if resp == nil || resp.Data == nil {
+		log.Debugf("store (%s) get(%s) response empty", storeName, k)
 		respond(reqCtx, withEmpty())
 		return
 	}
@@ -804,6 +807,7 @@ func (a *api) onPostState(reqCtx *fasthttp.RequestCtx) {
 		return
 	}
 	if len(reqs) == 0 {
+		log.Debugf("Empty request store (%s)", storeName)
 		respond(reqCtx, withEmpty())
 		return
 	}
