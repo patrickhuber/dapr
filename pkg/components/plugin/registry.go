@@ -14,76 +14,55 @@ limitations under the License.
 package plugin
 
 import (
-	"strings"
-
-	"github.com/dapr/dapr/pkg/components"
+	"github.com/dapr/dapr/pkg/modes"
 	"github.com/dapr/dapr/pkg/plugin"
-	"github.com/pkg/errors"
 )
 
 type (
-	FactoryMethod func() (plugin.Plugin, error)
+	FactoryMethod func(plugin.Config) (plugin.Plugin, error)
 
 	// Plugin is a plugin component definition.
 	Plugin struct {
-		Name          string
+		Mode          modes.DaprMode
 		FactoryMethod FactoryMethod
 	}
 
 	// Registry is the interface for callers to get registered plugin components.
 	Registry interface {
-		Register(components ...Plugin)
-		Create(name, version string) (plugin.Plugin, error)
+		Register(mode modes.DaprMode, components ...Plugin)
+		Create(plugin.Config) (plugin.Plugin, error)
 	}
 
 	pluginRegistry struct {
-		plugins map[string]FactoryMethod
+		factory FactoryMethod
 	}
 )
 
-// New creates a Plugin.
-func New(name string, factoryMethod FactoryMethod) Plugin {
+// New creates a Plugin Factory.
+func New(mode modes.DaprMode, factoryMethod FactoryMethod) Plugin {
 	return Plugin{
-		Name:          name,
 		FactoryMethod: factoryMethod,
+		Mode:          mode,
 	}
 }
 
 // NewRegistry returns a new pub sub registry.
 func NewRegistry() Registry {
-	return &pluginRegistry{
-		plugins: map[string]FactoryMethod{},
-	}
+	return &pluginRegistry{}
 }
 
-// Register registers one or more new message buses.
-func (p *pluginRegistry) Register(components ...Plugin) {
+// Register attempts to match the given runtime mode to the list of components
+// See the WithPlugin methods in the runtime to see how plugin factories are bound
+func (p *pluginRegistry) Register(mode modes.DaprMode, components ...Plugin) {
 	for _, component := range components {
-		p.plugins[createFullName(component.Name)] = component.FactoryMethod
+		if component.Mode == mode {
+			p.factory = component.FactoryMethod
+			return
+		}
 	}
 }
 
-// Create instantiates a pub/sub based on `name`.
-func (p *pluginRegistry) Create(name, version string) (plugin.Plugin, error) {
-	if method, ok := p.getplugin(name, version); ok {
-		return method()
-	}
-	return nil, errors.Errorf("couldn't find plugin %s/%s", name, version)
-}
-
-func (p *pluginRegistry) getplugin(name, version string) (FactoryMethod, bool) {
-	nameLower := strings.ToLower(name)
-	versionLower := strings.ToLower(version)
-	pluginFn, ok := p.plugins[nameLower+"/"+versionLower]
-	if ok {
-		return pluginFn, true
-	}
-	if components.IsInitialVersion(versionLower) {
-		pluginFn, ok = p.plugins[nameLower]
-	}
-	return pluginFn, ok
-}
-
-func createFullName(name string) string {
-	return strings.ToLower("plugin." + name)
+// Creates an instance of the plugin
+func (p *pluginRegistry) Create(cfg plugin.Config) (plugin.Plugin, error) {
+	return p.factory(cfg)
 }

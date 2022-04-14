@@ -22,6 +22,8 @@ import (
 	"github.com/valyala/fasthttp"
 	"go.uber.org/automaxprocs/maxprocs"
 
+	"github.com/dapr/dapr/pkg/env"
+	"github.com/dapr/dapr/pkg/modes"
 	"github.com/dapr/dapr/pkg/runtime"
 	"github.com/dapr/kit/logger"
 
@@ -155,7 +157,7 @@ import (
 	// plugins
 	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
 	"github.com/dapr/dapr/pkg/plugin"
-	"github.com/dapr/dapr/pkg/plugin/grpc"
+	plugin_kubernetes "github.com/dapr/dapr/pkg/plugin/kubernetes"
 	"github.com/dapr/dapr/pkg/plugin/standalone"
 )
 
@@ -511,11 +513,14 @@ func main() {
 		),
 
 		runtime.WithPlugins(
-			plugin_loader.New("standalone", func() (plugin.Plugin, error) {
-				return standalone.NewPlugin(logContrib), nil
+			plugin_loader.New(modes.StandaloneMode, func(cfg plugin.Config) (plugin.Plugin, error) {
+				// inject the filesystem object into the plugin. this could be moved up to a package variable
+				filesystem := os.DirFS("/")
+				return standalone.NewPlugin(logContrib, cfg, filesystem), nil
 			}),
-			plugin_loader.New("kubernetes", func() (plugin.Plugin, error) {
-				return grpc.NewPlugin(logContrib), nil
+			plugin_loader.New(modes.KubernetesMode, func(cfg plugin.Config) (plugin.Plugin, error) {
+				environment := env.NewOS()
+				return plugin_kubernetes.NewPlugin(logContrib, cfg, environment), nil
 			}),
 		),
 	)

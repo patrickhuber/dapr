@@ -2,14 +2,19 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
+	"log"
+	"net"
 
 	"github.com/dapr/components-contrib/state"
 	"github.com/dapr/components-contrib/state/utils"
+	proto_state "github.com/dapr/dapr/pkg/proto/state/v1"
 	"github.com/dapr/dapr/pkg/sdk"
 	sdk_state "github.com/dapr/dapr/pkg/sdk/state/v1"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"google.golang.org/grpc"
 )
 
 type Store struct {
@@ -131,6 +136,22 @@ func (s *Store) BulkSet(req []state.SetRequest) error {
 }
 
 func main() {
+	port := 0
+	flag.IntVar(&port, "p", 0, "specifies the port to listen on (when in container)")
+	flag.Parse()
+	switch port {
+	case 0:
+		servePlugin()
+	default:
+		handle(serveGrpc(port))
+	}
+}
+
+func handle(err error) {
+	log.Fatal(err)
+}
+
+func servePlugin() {
 	store := &Store{
 		data: map[string][]byte{},
 	}
@@ -143,4 +164,22 @@ func main() {
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
 	})
+}
+
+func serveGrpc(port int) error {
+	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		return fmt.Errorf("failed to listen: %w", err)
+	}
+
+	var opts []grpc.ServerOption
+	server := grpc.NewServer(opts...)
+
+	store := &sdk_state.GRPCServer{
+		Impl: &Store{
+			data: map[string][]byte{},
+		},
+	}
+	proto_state.RegisterStoreServer(server, store)
+	return server.Serve(listener)
 }

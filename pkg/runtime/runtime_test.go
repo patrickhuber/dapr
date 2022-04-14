@@ -3122,7 +3122,8 @@ func TestInitPlugins(t *testing.T) {
 		r := NewDaprRuntime(&Config{}, &config.Configuration{}, &config.AccessControlList{})
 		defer stopRuntime(t, r)
 		r.pluginRegistry.Register(
-			plugin_loader.New("testPlugin", func() (plugin.Plugin, error) {
+			modes.StandaloneMode,
+			plugin_loader.New("testPlugin", func(cfg plugin.Config) (plugin.Plugin, error) {
 				return &daprt.MockPlugin{}, nil
 			}),
 		)

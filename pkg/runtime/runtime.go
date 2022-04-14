@@ -360,7 +360,7 @@ func (a *DaprRuntime) initRuntime(opts *runtimeOpts) error {
 	a.bindingsRegistry.RegisterInputBindings(opts.inputBindings...)
 	a.bindingsRegistry.RegisterOutputBindings(opts.outputBindings...)
 	a.httpMiddlewareRegistry.Register(opts.httpMiddleware...)
-	a.pluginRegistry.Register(opts.plugins...)
+	a.pluginRegistry.Register(a.runtimeConfig.Mode, opts.plugins...)
 
 	go a.processComponents()
 	err = a.beginComponentsUpdates()
@@ -1127,20 +1127,28 @@ func (a *DaprRuntime) initOutputBinding(c components_v1alpha1.Component) error {
 //	  Initialize(components_v1alpha1.Component) error
 // }
 func (a *DaprRuntime) initPlugin(s components_v1alpha1.Component) error {
-	plugin, err := a.pluginRegistry.Create(s.Spec.Type, s.Spec.Version)
+
+	p, err := a.pluginRegistry.Create(plugin.Config{
+		Name:       s.ObjectMeta.Name,
+		Version:    s.Spec.Version,
+		Type:       s.Spec.Type,
+		Standalone: a.runtimeConfig.Standalone,
+		Kubernetes: a.runtimeConfig.Kubernetes,
+	})
+
 	if err != nil {
 		log.Warnf("error creating plugin %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
 		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
 		return err
 	}
-	if plugin == nil {
+	if p == nil {
 		return nil
 	}
 
-	props := a.convertMetadataItemsToProperties(s.Spec.Metadata)
-	err = plugin.Init(configuration.Metadata{
-		Properties: props,
+	err = p.Init(configuration.Metadata{
+		Properties: map[string]string{},
 	})
+
 	if err != nil {
 		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
 		log.Warnf("error initializing plugin %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
@@ -1148,7 +1156,7 @@ func (a *DaprRuntime) initPlugin(s components_v1alpha1.Component) error {
 	}
 
 	// save the plugin in the plugin list and notify the component was initialized
-	a.plugins[s.ObjectMeta.Name] = plugin
+	a.plugins[s.ObjectMeta.Name] = p
 	diag.DefaultMonitoring.ComponentInitialized(s.Spec.Type)
 
 	return nil
