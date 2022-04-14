@@ -1,7 +1,6 @@
 package kubernetes
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	statesdk "github.com/dapr/dapr/pkg/sdk/state/v1"
 	"github.com/dapr/kit/logger"
 	"google.golang.org/grpc"
+	"gopkg.in/yaml.v2"
 )
 
 type Plugin struct {
@@ -25,10 +25,10 @@ type Plugin struct {
 }
 
 type Metadata struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Address string `json:"address"`
-	Port    int    `json:"port"`
+	Name    string `json:"name" yaml:"name"`
+	Version string `json:"version" yaml:"version"`
+	Address string `json:"address" yaml:"address"`
+	Port    int    `json:"port" yaml:"port"`
 }
 
 func NewPlugin(logger logger.Logger, cfg plugin.Config, environment env.Env) plugin.Plugin {
@@ -92,6 +92,26 @@ func (p *Plugin) getCurrentComponentPluginMetdata() (Metadata, error) {
 	return zero, fmt.Errorf("metada for component %s version %s not found in injected environment variables", p.cfg.Name, p.cfg.Type)
 }
 
+// getPluginMetadata gets the plugin metadata as an encoded yaml string and turnes it into a structure
+//
+// input:
+// 	DAPR_PLUGIN_GOMEMORY_V1=name: abc|version: v1|ip: 192.168.1.1|port: 1234
+//
+// to yaml:
+// 	name: abc123
+// 	version: v1
+// 	ip: 192.168.1.1
+// 	port: 1234
+//
+// to metadata
+// allMetadata := []Metadata{
+//    {
+// 			Name: "abc123",
+//			Version: "v1",
+// 			IP: "192.168.1.1",
+// 			Port: "1234",
+//    },
+// }
 func (p *Plugin) getPluginMetadata() ([]Metadata, error) {
 	names := p.getPluginEnvironmentVariables()
 	allMetadata := []Metadata{}
@@ -101,10 +121,26 @@ func (p *Plugin) getPluginMetadata() ([]Metadata, error) {
 			continue
 		}
 		metadata := Metadata{}
-		err := json.Unmarshal([]byte(value), &metadata)
+
+		// first split the string by pipe and reset the value variable
+		splits := strings.Split(value, "|")
+		value = ""
+
+		// create a yaml string by joining the segments into lines
+		for i, s := range splits {
+			if i > 0 {
+				value += fmt.Sprintln()
+			}
+			value = fmt.Sprint(s)
+		}
+
+		// unmarshal the yaml string to the metadata variable
+		err := yaml.Unmarshal([]byte(value), &metadata)
 		if err != nil {
 			return nil, err
 		}
+
+		// append to the list of all metadata
 		allMetadata = append(allMetadata, metadata)
 	}
 	return allMetadata, nil
