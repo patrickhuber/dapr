@@ -75,7 +75,7 @@ func (d *discovery) transform(key, value string) (*Metadata, error) {
 		if i > 0 {
 			value += fmt.Sprintln()
 		}
-		value = fmt.Sprint(s)
+		value += fmt.Sprint(s)
 	}
 	// unmarshal the yaml string to the metadata variable
 	err := yaml.Unmarshal([]byte(value), &metadata)
