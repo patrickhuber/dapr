@@ -14,12 +14,8 @@ func (m *memory) Get(key string) string {
 	return m.variables[key]
 }
 
-func (m *memory) List() []string {
-	list := make([]string, 0)
-	for k := range m.variables {
-		list = append(list, k)
-	}
-	return list
+func (m *memory) List() map[string]string {
+	return m.variables
 }
 
 func (m *memory) Lookup(key string) (string, bool) {

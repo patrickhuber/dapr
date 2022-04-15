@@ -514,13 +514,17 @@ func main() {
 
 		runtime.WithPlugins(
 			plugin_loader.New(modes.StandaloneMode, func(cfg plugin.Config) (plugin.Plugin, error) {
-				// inject the filesystem object into the plugin. this could be moved up to a package variable
+				// inject the filesystem object into the plugin.
+				// depenency injection would be ideal for this
 				filesystem := os.DirFS("/")
 				return standalone.NewPlugin(logContrib, cfg, filesystem), nil
 			}),
 			plugin_loader.New(modes.KubernetesMode, func(cfg plugin.Config) (plugin.Plugin, error) {
+				// inject the discovery service into the plugin
+				// depenency injection would be ideal for this
 				environment := env.NewOS()
-				return plugin_kubernetes.NewPlugin(logContrib, cfg, environment), nil
+				discovery := plugin_kubernetes.NewDiscovery(environment)
+				return plugin_kubernetes.NewPlugin(logContrib, cfg, discovery), nil
 			}),
 		),
 	)
