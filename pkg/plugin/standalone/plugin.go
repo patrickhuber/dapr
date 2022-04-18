@@ -17,30 +17,42 @@ import (
 )
 
 type Plugin struct {
-	clientProtocol goplugin.ClientProtocol
-	cfg            plugin.Config
-	logger         logger.Logger
-	filesystem     fs.FS
+	clientProtocol        goplugin.ClientProtocol
+	cfg                   plugin.Config
+	logger                logger.Logger
+	filesystem            fs.FS
+	clientProtocolFactory ClientProtocolFactory
 }
 
 const BaseDirectoryKey = "standalone.BaseDirectory"
 
-func NewPlugin(logger logger.Logger, cfg plugin.Config, filesystem fs.FS) plugin.Plugin {
+type ClientProtocolFactory func(client *goplugin.Client) (goplugin.ClientProtocol, error)
+
+func DefaultClientProtocolFactory(client *goplugin.Client) (goplugin.ClientProtocol, error) {
+	return client.Client()
+}
+
+func NewPlugin(
+	logger logger.Logger,
+	cfg plugin.Config,
+	filesystem fs.FS,
+	clientProtocolFactory ClientProtocolFactory) plugin.Plugin {
 	p := &Plugin{
-		logger:     logger,
-		cfg:        cfg,
-		filesystem: filesystem,
+		logger:                logger,
+		cfg:                   cfg,
+		filesystem:            filesystem,
+		clientProtocolFactory: clientProtocolFactory,
 	}
 	return p
 }
 
 func (p *Plugin) Init(m configuration.Metadata) error {
-	pluginPath, err := p.GetPluginPath()
+	pluginPath, err := p.getPluginPath()
 	if err != nil {
 		return err
 	}
 
-	runtimeContext, err := p.MatchRuntimeContext(pluginPath)
+	runtimeContext, err := p.matchRuntimeContext(pluginPath)
 	if err != nil {
 		return err
 	}
@@ -63,7 +75,8 @@ func (p *Plugin) Init(m configuration.Metadata) error {
 			goplugin.ProtocolGRPC,
 		},
 	})
-	clientProtocol, err := client.Client()
+
+	clientProtocol, err := p.clientProtocolFactory(client)
 	if err != nil {
 		return err
 	}
@@ -72,7 +85,7 @@ func (p *Plugin) Init(m configuration.Metadata) error {
 }
 
 func (c *Plugin) Store() (state.Store, error) {
-	name := string(state_sdk.ProtocolGRPC)
+	name := state_sdk.ProtocolGRPC
 	value, err := c.clientProtocol.Dispense(name)
 	if err != nil {
 		return nil, err
@@ -101,14 +114,14 @@ func (c *Plugin) Close() error {
 	return c.clientProtocol.Close()
 }
 
-func (p *Plugin) CreatePluginWildcardPath() string {
+func (p *Plugin) createPluginWildcardPath() string {
 	fileName := fmt.Sprintf("dapr-%s-%s*", p.cfg.Name, p.cfg.Version)
 	return filepath.Join(p.cfg.Standalone.PluginsPath, p.cfg.Name, p.cfg.Version, fileName)
 }
 
-func (p *Plugin) GetPluginPath() (string, error) {
+func (p *Plugin) getPluginPath() (string, error) {
 	// create the plugin path
-	pluginWildcardPath := p.CreatePluginWildcardPath()
+	pluginWildcardPath := p.createPluginWildcardPath()
 
 	// look in the path for anything that matches the plugin file spec
 	entries, err := fs.Glob(p.filesystem, pluginWildcardPath)
@@ -122,7 +135,7 @@ func (p *Plugin) GetPluginPath() (string, error) {
 	return entries[0], nil
 }
 
-func (p *Plugin) MatchRuntimeContext(pluginPath string) (RuntimeContext, error) {
+func (p *Plugin) matchRuntimeContext(pluginPath string) (RuntimeContext, error) {
 	runtimeContexts := MatchRuntimeContext(pluginPath)
 	if len(runtimeContexts) != 1 {
 		return nil, fmt.Errorf("found (%d) runtime contexts that match the file path %s", len(runtimeContexts), pluginPath)

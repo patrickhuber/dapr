@@ -14,25 +14,33 @@ import (
 	"google.golang.org/grpc"
 )
 
+type ConnectionFactory func(*Metadata) (*grpc.ClientConn, error)
+
+func DefaultConnectionFactory(metadata *Metadata) (*grpc.ClientConn, error) {
+	ipAddress := net.ParseIP(metadata.Address)
+	if ipAddress == nil {
+		return nil, fmt.Errorf("%s is not a valid ip address", metadata.Address)
+	}
+
+	addressAndPort := fmt.Sprintf("%s:%d", metadata.Address, metadata.Port)
+
+	return grpc.Dial(addressAndPort)
+}
+
 type Plugin struct {
-	connection *grpc.ClientConn
-	cfg        plugin.Config
-	logger     logger.Logger
-	discovery  Discovery
+	connection        *grpc.ClientConn
+	cfg               plugin.Config
+	logger            logger.Logger
+	discovery         Discovery
+	connectionFactory ConnectionFactory
 }
 
-type Metadata struct {
-	Name    string `yaml:"name"`
-	Version string `yaml:"version"`
-	Address string `yaml:"address"`
-	Port    int    `yaml:"port"`
-}
-
-func NewPlugin(logger logger.Logger, cfg plugin.Config, discovery Discovery) plugin.Plugin {
+func NewPlugin(logger logger.Logger, cfg plugin.Config, discovery Discovery, factory ConnectionFactory) plugin.Plugin {
 	return &Plugin{
-		logger:    logger,
-		cfg:       cfg,
-		discovery: discovery,
+		logger:            logger,
+		cfg:               cfg,
+		discovery:         discovery,
+		connectionFactory: factory,
 	}
 }
 
@@ -47,17 +55,11 @@ func (p *Plugin) Init(m configuration.Metadata) error {
 		return fmt.Errorf("unable to locate plugin metadata for plugin %s version %s", p.cfg.Name, p.cfg.Version)
 	}
 
-	ipAddress := net.ParseIP(metadata.Address)
-	if ipAddress == nil {
-		return fmt.Errorf("%s is not a valid ip address", metadata.Address)
-	}
-
-	addressAndPort := fmt.Sprintf("%s:%d", metadata.Address, metadata.Port)
-
-	conn, err := grpc.Dial(addressAndPort)
+	conn, err := p.connectionFactory(metadata)
 	if err != nil {
 		return err
 	}
+
 	p.connection = conn
 	return nil
 }

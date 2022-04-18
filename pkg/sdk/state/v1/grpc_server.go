@@ -48,22 +48,26 @@ func (s *GRPCServer) Get(ctx context.Context, req *statev1pb.GetRequest) (*state
 	if response == nil {
 		return nil, fmt.Errorf("response is nil")
 	}
-	etag := ""
+	var etag *common.Etag
 	if response.ETag != nil {
-		etag = *response.ETag
+		etag.Value = *response.ETag
 	}
 
 	return &statev1pb.GetResponse{
 		Data:     response.Data,
-		Etag:     &common.Etag{Value: etag},
+		Etag:     etag,
 		Metadata: response.Metadata,
 	}, nil
 }
 
 func (s *GRPCServer) Set(ctx context.Context, req *statev1pb.SetRequest) (*emptypb.Empty, error) {
+	var etag *string
+	if req.Etag != nil {
+		etag = &req.Etag.Value
+	}
 	setRequest := &state.SetRequest{
 		Key:   req.Key,
-		ETag:  &req.Etag.Value,
+		ETag:  etag,
 		Value: req.Value,
 		Options: state.SetStateOption{
 			Concurrency: req.Options.GetConcurrency().String(),
@@ -75,9 +79,13 @@ func (s *GRPCServer) Set(ctx context.Context, req *statev1pb.SetRequest) (*empty
 }
 
 func (s *GRPCServer) Delete(ctx context.Context, req *statev1pb.DeleteRequest) (*emptypb.Empty, error) {
+	var etag *string
+	if req.Etag != nil {
+		etag = &req.Etag.Value
+	}
 	deleteRequest := &state.DeleteRequest{
 		Key:      req.Key,
-		ETag:     &req.Etag.Value,
+		ETag:     etag,
 		Metadata: req.Metadata,
 		Options: state.DeleteStateOption{
 			Concurrency: req.Options.GetConcurrency().String(),

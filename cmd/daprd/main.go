@@ -524,7 +524,7 @@ func main() {
 				// depenency injection would be ideal for this
 				environment := env.NewOS()
 				discovery := plugin_kubernetes.NewDiscovery(environment)
-				return plugin_kubernetes.NewPlugin(logContrib, cfg, discovery), nil
+				return plugin_kubernetes.NewPlugin(logContrib, cfg, discovery, plugin_kubernetes.DefaultConnectionFactory), nil
 			}),
 		),
 	)

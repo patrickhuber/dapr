@@ -105,10 +105,13 @@ func (c *GRPCClient) mapGetRequest(req *state.GetRequest) *proto.GetRequest {
 }
 
 func (c *GRPCClient) mapGetResponse(resp *proto.GetResponse) *state.GetResponse {
-	etag := resp.GetEtag().Value
+	var etag *string
+	if resp.Etag != nil {
+		etag = &resp.Etag.Value
+	}
 	return &state.GetResponse{
 		Data:     resp.GetData(),
-		ETag:     &etag,
+		ETag:     etag,
 		Metadata: resp.GetMetadata(),
 	}
 }
