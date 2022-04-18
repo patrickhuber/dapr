@@ -517,7 +517,7 @@ func main() {
 				// inject the filesystem object into the plugin.
 				// depenency injection would be ideal for this
 				filesystem := os.DirFS("/")
-				return standalone.NewPlugin(logContrib, cfg, filesystem), nil
+				return standalone.NewPlugin(logContrib, cfg, filesystem, standalone.DefaultClientProtocolFactory), nil
 			}),
 			plugin_loader.New(modes.KubernetesMode, func(cfg plugin.Config) (plugin.Plugin, error) {
 				// inject the discovery service into the plugin
