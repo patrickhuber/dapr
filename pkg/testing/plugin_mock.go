@@ -9,6 +9,7 @@ import (
 )
 
 type MockPlugin struct {
+	InternalStore state.Store
 }
 
 func (p *MockPlugin) Name() string {
@@ -32,7 +33,7 @@ func (p *MockPlugin) Init(metadata configuration.Metadata) error {
 }
 
 func (p *MockPlugin) Store() (state.Store, error) {
-	return nil, nil
+	return p.InternalStore, nil
 }
 
 func (p *MockPlugin) PubSub() (pubsub.PubSub, error) {

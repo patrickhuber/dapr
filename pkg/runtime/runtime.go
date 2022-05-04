@@ -1120,48 +1120,6 @@ func (a *DaprRuntime) initOutputBinding(c components_v1alpha1.Component) error {
 	return nil
 }
 
-// initPlugin initializes the plugin component from the api spec
-// TODO: refactor this into a ComponentInitializer interface
-//
-// type ComponentInitializer interface {
-//	  Initialize(components_v1alpha1.Component) error
-// }
-func (a *DaprRuntime) initPlugin(s components_v1alpha1.Component) error {
-
-	p, err := a.pluginRegistry.Create(plugin.Config{
-		Name:       s.ObjectMeta.Name,
-		Version:    s.Spec.Version,
-		Type:       s.Spec.Type,
-		Standalone: a.runtimeConfig.Standalone,
-		Kubernetes: a.runtimeConfig.Kubernetes,
-	})
-
-	if err != nil {
-		log.Warnf("error creating plugin %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
-		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "creation")
-		return err
-	}
-	if p == nil {
-		return nil
-	}
-
-	err = p.Init(configuration.Metadata{
-		Properties: map[string]string{},
-	})
-
-	if err != nil {
-		diag.DefaultMonitoring.ComponentInitFailed(s.Spec.Type, "init")
-		log.Warnf("error initializing plugin %s (%s/%s): %s", s.ObjectMeta.Name, s.Spec.Type, s.Spec.Version, err)
-		return err
-	}
-
-	// save the plugin in the plugin list and notify the component was initialized
-	a.plugins[s.ObjectMeta.Name] = p
-	diag.DefaultMonitoring.ComponentInitialized(s.Spec.Type)
-
-	return nil
-}
-
 func (a *DaprRuntime) initConfiguration(s components_v1alpha1.Component) error {
 	store, err := a.configurationStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
 	if err != nil {
@@ -1906,8 +1864,6 @@ func (a *DaprRuntime) doProcessOneComponent(category ComponentCategory, comp com
 		return a.initState(comp)
 	case configurationComponent:
 		return a.initConfiguration(comp)
-	case pluginComponent:
-		return a.initPlugin(comp)
 	}
 	return nil
 }

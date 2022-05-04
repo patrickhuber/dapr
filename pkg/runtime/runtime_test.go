@@ -60,7 +60,6 @@ import (
 	channelt "github.com/dapr/dapr/pkg/channel/testing"
 	bindings_loader "github.com/dapr/dapr/pkg/components/bindings"
 	nr_loader "github.com/dapr/dapr/pkg/components/nameresolution"
-	plugin_loader "github.com/dapr/dapr/pkg/components/plugin"
 	pubsub_loader "github.com/dapr/dapr/pkg/components/pubsub"
 	secretstores_loader "github.com/dapr/dapr/pkg/components/secretstores"
 	state_loader "github.com/dapr/dapr/pkg/components/state"
@@ -628,6 +627,22 @@ func TestInitState(t *testing.T) {
 		// assert
 		assert.NoError(t, err)
 		assert.True(t, ok)
+	})
+
+	t.Run("test init state store, plugin", func(t *testing.T) {
+		// setup
+		initMockStateStoreForRuntime(rt, nil)
+		internalStore := plugin.NewMemoryStore()
+		p := &daprt.MockPlugin{
+			InternalStore: internalStore,
+		}
+		rt.plugins[mockStateComponent.Name] = p
+		mockStateComponent.Spec.Plugin = plugin.TypeGRPC
+
+		err := rt.initState(mockStateComponent)
+		assert.NoError(t, err)
+		// validate the plugin instance was used
+		assert.Same(t, internalStore, rt.stateStores[TestPubsubName])
 	})
 }
 
@@ -3113,24 +3128,6 @@ func TestInitBindings(t *testing.T) {
 		output.ObjectMeta.Name = "testinput"
 		output.Spec.Type = "bindings.testoutput"
 		err = r.initBinding(output)
-		assert.NoError(t, err)
-	})
-}
-
-func TestInitPlugins(t *testing.T) {
-	t.Run("single plugin with state store", func(t *testing.T) {
-		r := NewDaprRuntime(&Config{}, &config.Configuration{}, &config.AccessControlList{})
-		defer stopRuntime(t, r)
-		r.pluginRegistry.Register(
-			modes.StandaloneMode,
-			plugin_loader.New("testPlugin", func(cfg plugin.Config) (plugin.Plugin, error) {
-				return &daprt.MockPlugin{}, nil
-			}),
-		)
-		c := components_v1alpha1.Component{}
-		c.ObjectMeta.Name = "testPlugin"
-		c.Spec.Type = "plugin.testPlugin"
-		err := r.initPlugin(c)
 		assert.NoError(t, err)
 	})
 }
