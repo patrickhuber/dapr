@@ -1192,10 +1192,9 @@ func (a *DaprRuntime) initState(s components_v1alpha1.Component) error {
 	var store state.Store
 	var err error
 
-	// if the component references a plugin dependency, it should be loaded by now
-	if plugin, exists := a.plugins[s.Spec.Plugin]; exists {
+	if p, exists := a.plugins[s.Name]; s.Spec.Plugin == plugin.TypeGRPC && exists {
 		log.Debugf("component %s %s plugin value : %s", s.Spec.Type, s.Spec.Version, s.Spec.Plugin)
-		store, err = plugin.Store()
+		store, err = p.Store()
 	} else {
 		store, err = a.stateStoreRegistry.Create(s.Spec.Type, s.Spec.Version)
 	}
@@ -1924,11 +1923,11 @@ func (a *DaprRuntime) preprocessOneComponent(comp *components_v1alpha1.Component
 	}
 
 	// does this component have a plugin dependency?
-	if comp.Spec.Plugin != "" {
+	if comp.Spec.Plugin == plugin.TypeGRPC {
 
 		// if the dependency isn't loaded, wait until it is
-		if _, ok := a.plugins[comp.Spec.Plugin]; !ok {
-			dependency := componentDependency(pluginComponent, comp.Spec.Plugin)
+		if _, ok := a.plugins[comp.Name]; !ok {
+			dependency := componentDependency(pluginComponent, comp.Name)
 			unreadyDependencies = append(unreadyDependencies, dependency)
 		}
 	}
